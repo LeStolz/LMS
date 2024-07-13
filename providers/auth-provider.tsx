@@ -6,11 +6,11 @@ import { useQuery } from "@tanstack/react-query";
 import { createContext, useContext } from "react";
 
 type AuthContextType = {
-  user: User | null;
+  user: User | undefined;
 };
 
 const AuthContext = createContext<AuthContextType>({
-  user: null,
+  user: undefined,
 });
 
 export function useAuth() {

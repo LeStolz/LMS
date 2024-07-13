@@ -1,36 +1,33 @@
 "use client";
 
 import { authenticate } from "@/app/api/auth/log-in";
-import { Button } from "@/components/ui/button";
 import { useFormState, useFormStatus } from "react-dom";
 
-export default function LogInPage() {
-  const [error, dispatch] = useFormState(authenticate, undefined);
+export default function Page() {
+  const [errorMessage, dispatch] = useFormState(authenticate, undefined);
 
   return (
     <form action={dispatch}>
       <input type="email" name="email" placeholder="Email" required />
       <input type="password" name="password" placeholder="Password" required />
-      <div>{error && <p>{error.body}</p>}</div>
-      <LogInButton />
+      <div>{errorMessage && <p>{errorMessage}</p>}</div>
+      <LoginButton />
     </form>
   );
 }
 
-function LogInButton() {
+function LoginButton() {
   const { pending } = useFormStatus();
 
+  const handleClick = (event: any) => {
+    if (pending) {
+      event.preventDefault();
+    }
+  };
+
   return (
-    <Button
-      aria-disabled={pending}
-      type="submit"
-      onClick={(event) => {
-        if (pending) {
-          event.preventDefault();
-        }
-      }}
-    >
-      Log In
-    </Button>
+    <button aria-disabled={pending} type="submit" onClick={handleClick}>
+      Login
+    </button>
   );
 }

@@ -30,6 +30,7 @@ CREATE TABLE [dbo].[user]
 	email VARCHAR(256) NOT NULL,
 	password VARCHAR(128) NOT NULL,
 	name NVARCHAR(128) NOT NULL,
+	type CHAR(2) NOT NULL CHECK(type IN ('AD', 'LN', 'LT')),
 
 	CONSTRAINT [User email format is invalid.] CHECK(email LIKE '%_@__%.__%'),
 	CONSTRAINT [User password must be at least 5 characters long.] CHECK(LEN(password) > 4),
@@ -42,13 +43,25 @@ GO
 
 
 
+CREATE FUNCTION [dbo].[isValidUser](@email VARCHAR(256), @type CHAR(2))
+RETURNS BIT
+AS
+BEGIN
+	IF (EXISTS(SELECT email FROM [dbo].[user] WHERE email = @email AND type = @type))
+		RETURN 1
+
+	RETURN 0
+END
+GO
+
+
 IF OBJECT_ID('[dbo].[admin]', 'U') IS NOT NULL
 	DROP TABLE [dbo].[admin]
 GO
 
 CREATE TABLE [dbo].[admin]
 (
-	email VARCHAR(256) NOT NULL,
+	email VARCHAR(256) NOT NULL CHECK([dbo].[isValidUser](email, 'AD') = 1),
 
 	CONSTRAINT [fk_admin_user] FOREIGN KEY(email) REFERENCES [dbo].[user](email)
 	ON DELETE CASCADE,
@@ -65,7 +78,7 @@ GO
 
 CREATE TABLE [dbo].[learner]
 (
-	email VARCHAR(256) NOT NULL,
+	email VARCHAR(256) NOT NULL CHECK([dbo].[isValidUser](email, 'LN') = 1),
 
 	CONSTRAINT [fk_learner_user] FOREIGN KEY(email) REFERENCES [dbo].[user](email)
 	ON DELETE CASCADE,
@@ -82,7 +95,7 @@ GO
 
 CREATE TABLE [dbo].[lecturer]
 (
-	email VARCHAR(256) NOT NULL,
+	email VARCHAR(256) NOT NULL CHECK([dbo].[isValidUser](email, 'LT') = 1),
 	dob DATE NOT NULL,
 	gender CHAR(1) NOT NULL,
 	homeAddress NVARCHAR(256) NOT NULL,
@@ -409,6 +422,7 @@ CREATE TABLE [dbo].[courseSection]
 	nextCourseSectionId INT DEFAULT(NULL),
 	title NVARCHAR(64) NOT NULL,
 	description NVARCHAR(512) NOT NULL,
+	type CHAR(1) NOT NULL CHECK(type IN ('M', 'L', 'E')),
 
 	CONSTRAINT [Another course section already has the same next section id.] UNIQUE(nextCourseSectionId, courseId),
 	CONSTRAINT [A course section cannot be its own next section.] CHECK(nextCourseSectionId <> id),
@@ -425,6 +439,20 @@ CREATE TABLE [dbo].[courseSection]
 GO
 
 
+
+
+CREATE FUNCTION [dbo].[isValidSection](@id INT, @courseId INT, @type CHAR(1))
+RETURNS BIT
+AS
+BEGIN
+	IF (EXISTS(SELECT id FROM [dbo].[courseSection] WHERE id = @id AND courseId = @courseId AND type = @type))
+		RETURN 1
+
+	RETURN 0
+END
+GO
+
+
 IF OBJECT_ID('[dbo].[courseLesson]', 'U') IS NOT NULL
 	DROP TABLE [dbo].[courseLesson]
 GO
@@ -435,6 +463,9 @@ CREATE TABLE [dbo].[courseLesson]
 	courseId INT NOT NULL,
 	isFree BIT NOT NULL DEFAULT 0,
 	durationInMinutes TINYINT NOT NULL,
+
+	CONSTRAINT [Course lesson must have a corresponding section.]
+		CHECK([dbo].[isValidSection](id, courseId, 'L') = 1),
 
 	CONSTRAINT [Course lesson duration must be between 1 and 60 minutes.]
 		CHECK(1 <= durationInMinutes AND durationInMinutes <= 60),
@@ -456,6 +487,10 @@ CREATE TABLE [dbo].[courseExercise]
 (
 	id INT NOT NULL,
 	courseId INT NOT NULL,
+	type CHAR(1) NOT NULL CHECK(type IN ('E', 'Q')),
+
+	CONSTRAINT [Course exercise must have a corresponding section.]
+		CHECK([dbo].[isValidSection](id, courseId, 'E') = 1),
 
 	CONSTRAINT [fk_courseExercise_courseSection]
 		FOREIGN KEY(id, courseId) REFERENCES [dbo].[courseSection](id, courseId)
@@ -463,6 +498,20 @@ CREATE TABLE [dbo].[courseExercise]
 
 	CONSTRAINT [pk_courseExercise] PRIMARY KEY(id, courseId)
 );
+GO
+
+
+
+
+CREATE FUNCTION [dbo].[isValidExercise](@id INT, @courseId INT, @type CHAR(1))
+RETURNS BIT
+AS
+BEGIN
+	IF (EXISTS(SELECT id FROM [dbo].[courseExercise] WHERE id = @id AND courseId = @courseId AND type = @type))
+		RETURN 1
+
+	RETURN 0
+END
 GO
 
 
@@ -475,6 +524,9 @@ CREATE TABLE [dbo].[courseQuiz]
 	id INT NOT NULL,
 	courseId INT NOT NULL,
 	durationInMinutes TINYINT NOT NULL,
+
+	CONSTRAINT [Course quiz must have a corresponding exercise.]
+		CHECK([dbo].[isValidExercise](id, courseId, 'Q') = 1),
 
 	CONSTRAINT [Course quiz duration must be between 1 and 60 minutes.]
 		CHECK(1 <= durationInMinutes AND durationInMinutes <= 60),
@@ -611,6 +663,7 @@ CREATE TABLE [dbo].[courseSectionProgress]
 	courseId INT NOT NULL,
 	courseSectionId INT NOT NULL,
 	completionPercentage FLOAT NOT NULL DEFAULT 0,
+	type CHAR(1) NOT NULL CHECK(type IN ('S', 'E')),
 
 	CONSTRAINT [Course section completion percentage must be between 0 and 1.]
 		CHECK(0 <= completionPercentage AND completionPercentage <= 1),
@@ -626,6 +679,24 @@ CREATE TABLE [dbo].[courseSectionProgress]
 GO
 
 
+
+
+CREATE FUNCTION [dbo].[isValidSectionProgress](
+	@learnerEmail VARCHAR(256), @courseId INT, @courseSectionId INT, @type CHAR(1)
+)
+RETURNS BIT
+AS
+BEGIN
+	IF (EXISTS(
+		SELECT * FROM [dbo].[courseSectionProgress]
+		WHERE learnerEmail = @learnerEmail AND courseId = @courseId AND courseSectionId = @courseSectionId AND type = @type
+	))
+		RETURN 1
+
+	RETURN 0
+END
+GO
+
 IF OBJECT_ID('[dbo].[courseExerciseProgress]', 'U') IS NOT NULL
 	DROP TABLE [dbo].[courseExerciseProgress]
 GO
@@ -637,6 +708,9 @@ CREATE TABLE [dbo].[courseExerciseProgress]
 	courseSectionId INT NOT NULL,
 	savedTextSolution NVARCHAR(MAX) NOT NULL DEFAULT '',
 	grade FLOAT,
+
+	CONSTRAINT [Course exercise progress must have a corresponding course section progress.]
+		CHECK([dbo].isValidSectionProgress(learnerEmail, courseId, courseSectionId, 'E') = 1),
 
 	CONSTRAINT [Course exercise grade must be between 0 and 10.] CHECK(0 <= grade AND grade <= 10),
 
@@ -658,9 +732,24 @@ GO
 CREATE TABLE [dbo].[chat]
 (
 	id INT IDENTITY(1, 1) NOT NULL,
+	type CHAR(1) NOT NULL CHECK(type IN ('P', 'C')),
 
 	CONSTRAINT [pk_chat] PRIMARY KEY(id)
 );
+GO
+
+
+
+
+CREATE FUNCTION [dbo].[isValidChat](@id INT, @type CHAR(1))
+RETURNS BIT
+AS
+BEGIN
+	IF (EXISTS(SELECT id FROM [dbo].[chat] WHERE id = @id AND type = @type))
+		RETURN 1
+
+	RETURN 0
+END
 GO
 
 
@@ -670,7 +759,7 @@ GO
 
 CREATE TABLE [dbo].[privateChat]
 (
-	id INT NOT NULL,
+	id INT NOT NULL CHECK([dbo].[isValidChat](id, 'P') = 1),
 	email1 VARCHAR(256) NOT NULL,
 	email2 VARCHAR(256) NOT NULL,
 
@@ -693,7 +782,7 @@ GO
 
 CREATE TABLE [dbo].[courseChat]
 (
-	id INT NOT NULL,
+	id INT NOT NULL CHECK([dbo].[isValidChat](id, 'C') = 1),
 	courseId INT NOT NULL,
 
 	CONSTRAINT [fk_courseChat_chat] FOREIGN KEY(id) REFERENCES [dbo].[chat](id)
@@ -929,19 +1018,20 @@ GO
 CREATE OR ALTER PROCEDURE [dbo].[insertUser]
 	@email VARCHAR(256),
 	@password VARCHAR(128),
-	@name NVARCHAR(128)
+	@name NVARCHAR(128),
+	@type CHAR(2)
 AS
 BEGIN TRANSACTION
 SET XACT_ABORT ON
 SET NOCOUNT ON
 
-IF @email IS NULL OR @password IS NULL OR @name IS NULL
+IF @email IS NULL OR @password IS NULL OR @name IS NULL OR @type IS NULL
 	BEGIN;
-	THROW 51000, 'Email, password, and name are required.', 1;
+	THROW 51000, 'Email, password, name, and type are required.', 1;
 END
 
 INSERT INTO [dbo].[user]
-VALUES(@email, @password, @name)
+VALUES(@email, @password, @name, @type)
 
 SELECT *
 FROM [dbo].[user]

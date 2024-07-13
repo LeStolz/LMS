@@ -23,7 +23,6 @@ export async function getUser() {
   } catch (error) {
     return {
       status: 500,
-      body: "Something went wrong. Please try again later.",
     };
   }
 }
