@@ -2,9 +2,7 @@
 USE master
 GO
 
-IF EXISTS (SELECT name
-FROM sys.databases
-WHERE name = N'lms')
+IF EXISTS (SELECT name FROM sys.databases WHERE name = N'lms')
 	DROP DATABASE lms
 GO
 
@@ -993,22 +991,42 @@ GO
 
 
 -- Create the procedures
+CREATE OR ALTER PROCEDURE [dbo].[selectUser] @email VARCHAR(256)
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	IF @email IS NULL
+	BEGIN;
+		THROW 51000, 'Email is required.', 1;
+	END
+
+	SELECT email, name, type
+	FROM [dbo].[user]
+	WHERE email = @email
+COMMIT TRANSACTION
+GO
+
+
+
+
 CREATE OR ALTER PROCEDURE [dbo].[selectUserByCred]
 	@email VARCHAR(256),
 	@password VARCHAR(128)
 AS
 BEGIN TRANSACTION
-SET XACT_ABORT ON
-SET NOCOUNT ON
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
 
-IF @email IS NULL OR @password IS NULL
-BEGIN;
-	THROW 51000, 'Email and password are required.', 1;
-END
+	IF @email IS NULL OR @password IS NULL
+	BEGIN;
+		THROW 51000, 'Email and password are required.', 1;
+	END
 
-SELECT *
-FROM [dbo].[user]
-WHERE email = @email AND password = @password
+	SELECT *
+	FROM [dbo].[user]
+	WHERE email = @email AND password = @password
 COMMIT TRANSACTION
 GO
 
@@ -1022,19 +1040,24 @@ CREATE OR ALTER PROCEDURE [dbo].[insertUser]
 	@type CHAR(2)
 AS
 BEGIN TRANSACTION
-SET XACT_ABORT ON
-SET NOCOUNT ON
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
 
-IF @email IS NULL OR @password IS NULL OR @name IS NULL OR @type IS NULL
+	IF @email IS NULL OR @password IS NULL OR @name IS NULL OR @type IS NULL
 	BEGIN;
-	THROW 51000, 'Email, password, name, and type are required.', 1;
-END
+		THROW 51000, 'Email, password, name, and type are required.', 1;
+	END
 
-INSERT INTO [dbo].[user]
-VALUES(@email, @password, @name, @type)
+	IF @type = 'AD'
+	BEGIN;
+		THROW 51000, 'Admin users cannot be created.', 1;
+	END
 
-SELECT *
-FROM [dbo].[user]
-WHERE email = @email AND password = @password
+	INSERT INTO [dbo].[user]
+	VALUES(@email, @password, @name, @type)
+
+	SELECT *
+	FROM [dbo].[user]
+	WHERE email = @email AND password = @password
 COMMIT TRANSACTION
 GO

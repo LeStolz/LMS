@@ -1,5 +1,9 @@
 export type User = {
   email: string;
   name: string;
-  role: "admin" | "learner" | "lecturer";
+  type: "AD" | "LN" | "LT";
+};
+
+export type UserWithPassword = User & {
+  password: string;
 };

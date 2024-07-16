@@ -1,16 +1,18 @@
 "use client";
 
-import { getUser } from "@/app/api/user/get-user";
+import { signOut } from "@/app/api/auth/auth";
+import { getSession } from "@/app/api/user/user";
 import { User } from "@/types/user";
-import { useQuery } from "@tanstack/react-query";
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 type AuthContextType = {
-  user: User | undefined;
+  user: User | null;
+  signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
-  user: undefined,
+  user: null,
+  signOut: async () => {},
 });
 
 export function useAuth() {
@@ -18,14 +20,22 @@ export function useAuth() {
 }
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const { data: user } = useQuery({
-    queryKey: ["user"],
-    queryFn: async () => {
-      return (await getUser()).body;
-    },
-  });
+  const [user, setUser] = useState<AuthContextType["user"]>(() => null);
+
+  useEffect(() => {
+    (async () => {
+      setUser(await getSession());
+    })();
+  }, []);
+
+  const signOutWrapper = async () => {
+    setUser(null);
+    await signOut();
+  };
 
   return (
-    <AuthContext.Provider value={{ user }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, signOut: signOutWrapper }}>
+      {children}
+    </AuthContext.Provider>
   );
 };

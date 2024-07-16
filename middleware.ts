@@ -4,20 +4,24 @@ import { updateSession } from "./app/api/auth/auth";
 export async function middleware(request: NextRequest) {
   await updateSession(request);
 
-  const currentUser = request.cookies.get("currentUser")?.value;
+  const currentUser = request.cookies.get("session")?.value;
 
-  if (currentUser && !request.nextUrl.pathname.startsWith("/dashboard")) {
-    return Response.redirect(new URL("/dashboard", request.url));
+  if (
+    currentUser &&
+    (request.nextUrl.pathname.startsWith("/sign-in") ||
+      request.nextUrl.pathname.startsWith("/sign-up"))
+  ) {
+    return Response.redirect(new URL("/", request.url));
   }
 
   if (
     !currentUser &&
     !(
-      request.nextUrl.pathname.startsWith("/log-in") ||
-      request.nextUrl.pathname.startsWith("/sign-in")
+      request.nextUrl.pathname.startsWith("/sign-in") ||
+      request.nextUrl.pathname.startsWith("/sign-up")
     )
   ) {
-    return Response.redirect(new URL("/log-in", request.url));
+    return Response.redirect(new URL("/sign-in", request.url));
   }
 }
 

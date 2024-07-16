@@ -1,78 +1,59 @@
+"use server";
+
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { NextRequest, NextResponse } from "next/server";
-import { User } from "@/types/user";
 
 const secretKey = process.env.JWT_KEY;
 const key = new TextEncoder().encode(secretKey);
+const expiresDuration = parseInt(process.env.JWT_EXPIRES_IN_SECONDS!);
 
 export async function encrypt(payload: any) {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("10 sec from now")
+    .setExpirationTime(`${expiresDuration} sec from now`)
     .sign(key);
 }
 
-export async function decrypt(input: string): Promise<any> {
+export async function decrypt(input: string) {
   const { payload } = await jwtVerify(input, key, {
     algorithms: ["HS256"],
   });
-  return payload;
+
+  return payload as { email: string; expires: Date };
 }
 
-export async function login(formData: FormData) {
-  // Verify credentials && get the user
+export async function signOut() {
+  cookies().delete("session");
 
-  const user = { email: formData.get("email"), name: "John" };
-
-  // Create the session
-  const expires = new Date(Date.now() + 10 * 1000);
-  const session = await encrypt({ user, expires });
-
-  // Save the session in a cookie
-  cookies().set("session", session, { expires, httpOnly: true });
+  redirect("/sign-in");
 }
 
-export async function logout() {
-  // Destroy the session
-  cookies().set("session", "", { expires: new Date(0) });
-}
-
-export async function getSession() {
+export async function getSessionEmail() {
   const session = cookies().get("session")?.value;
-  if (!session) return null;
-  return await decrypt(session);
+
+  return session ? (await decrypt(session)).email : null;
 }
 
 export async function updateSession(request: NextRequest) {
   const session = request.cookies.get("session")?.value;
+
   if (!session) return;
 
-  // Refresh the session so it doesn't expire
   const parsed = await decrypt(session);
-  parsed.expires = new Date(Date.now() + 10 * 1000);
+
+  parsed.expires = new Date(Date.now() + expiresDuration);
+
   const res = NextResponse.next();
+
   res.cookies.set({
     name: "session",
     value: await encrypt(parsed),
     httpOnly: true,
     expires: parsed.expires,
   });
+
   return res;
-}
-
-export async function authorize(rolesAuthorized: User["role"][]) {
-  const session = await getSession();
-  const userRole = session?.user?.role;
-
-  if (!userRole) {
-    throw new Error("User is not logged in.");
-  }
-
-  if (!rolesAuthorized.includes(userRole)) {
-    throw new Error(`User does not have the required role ${rolesAuthorized}.`);
-  }
-
-  return session.user.email;
 }
