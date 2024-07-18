@@ -1,11 +1,9 @@
 "use server";
 
 import { User, UserWithPassword } from "@/types/user";
-import { redirect } from "next/navigation";
 import { insertUser, selectUser, selectUserByCred } from "./db";
 import { encrypt, getSessionEmail } from "../auth/auth";
 import { cookies } from "next/headers";
-import { formatError } from "@/lib/utils";
 
 const expiresDuration = parseInt(process.env.JWT_EXPIRES_IN_SECONDS!);
 
@@ -24,63 +22,41 @@ export async function authorize(rolesAuthorized: (User["type"] | null)[]) {
   return session;
 }
 
-async function setCredentialCookie(formData: FormData) {
+async function setCredentialCookie(email: string) {
   const expires = new Date(Date.now() + expiresDuration);
-  const session = await encrypt({ email: formData.get("email"), expires });
+  const session = await encrypt({ email: email, expires });
 
   cookies().set("session", session, { expires, httpOnly: true });
 }
 
-export async function signIn(_currentState: unknown, formData: FormData) {
+export async function signIn(email: string, password: string) {
   authorize([null]);
 
-  let isValidCredential = false;
-
   try {
-    const user = await selectUserByCred(
-      formData.get("email") as string,
-      formData.get("password") as string
-    );
+    const user = await selectUserByCred(email, password);
 
     if (!user) {
-      return "Invalid email or password.";
+      throw new Error("Invalid email or password.");
     }
 
-    setCredentialCookie(formData);
+    setCredentialCookie(email);
 
-    isValidCredential = true;
+    return user;
   } catch (error) {
-    return formatError(error);
-  } finally {
-    if (isValidCredential) {
-      redirect("/");
-    }
+    throw error;
   }
 }
 
-export async function signUp(_currentState: unknown, formData: FormData) {
+export async function signUp(user: UserWithPassword) {
   authorize([null]);
 
-  let isValidCredential = false;
-
   try {
-    const user: UserWithPassword = {
-      email: formData.get("email")?.toString()!,
-      password: formData.get("password")?.toString()!,
-      name: formData.get("name")?.toString()!,
-      type: formData.get("type")?.toString()! as User["type"],
-    };
-
     await insertUser(user);
 
-    setCredentialCookie(formData);
+    setCredentialCookie(user.email);
 
-    isValidCredential = true;
+    return user;
   } catch (error) {
-    return formatError(error);
-  } finally {
-    if (isValidCredential) {
-      redirect("/");
-    }
+    throw error;
   }
 }

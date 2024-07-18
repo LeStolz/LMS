@@ -1,7 +1,5 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -14,7 +12,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { LoaderCircleIcon } from "lucide-react";
-import { signUp } from "@/app/api/user/user";
 import {
   Select,
   SelectContent,
@@ -22,9 +19,47 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAuth } from "@/providers/auth-provider";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+
+const formSchema = z.object({
+  name: z.string().min(1, {
+    message: "Name is required.",
+  }),
+  email: z.string().email({
+    message: "Invalid email address.",
+  }),
+  password: z.string().min(5, {
+    message: "Password must be at least 5 characters long.",
+  }),
+  type: z.enum(["LN", "LT"], {
+    message: "Role is required.",
+  }),
+});
 
 export default function Component() {
-  const [errorMessage, dispatch] = useFormState(signUp, null);
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+  });
+  const { isSubmitting, isValid } = form.formState;
+  const [error, setError] = useState<string | undefined>(undefined);
+
+  const { signUp } = useAuth();
+
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setError(await signUp(values));
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center">
@@ -36,57 +71,108 @@ export default function Component() {
           <CardDescription>Get started with LMS today.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-6" action={dispatch}>
-            <div>
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                type="name"
+          <Form {...form}>
+            <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
+              <FormField
+                control={form.control}
                 name="name"
-                placeholder="Enter your name"
-                required
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="Enter your name"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
+              <FormField
+                control={form.control}
                 name="email"
-                placeholder="Enter your email"
-                required
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="Enter your email"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
+              <FormField
+                control={form.control}
                 name="password"
-                placeholder="Enter your password"
-                required
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="Enter your password"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            <div>
-              <Label htmlFor="type">Role</Label>
-              <Select defaultValue="LN" name="type" required>
-                <SelectTrigger id="type" className="w-full">
-                  <SelectValue placeholder="Select your role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="LN">Learner</SelectItem>
-                  <SelectItem value="LT">Lecturer</SelectItem>
-                  <SelectItem value="AD">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {errorMessage && (
+              <FormField
+                control={form.control}
+                name="type"
+                defaultValue="LN"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+
+                    <Select
+                      required
+                      {...field}
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger id="type" className="w-full">
+                          <SelectValue placeholder="Select your role" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="LN">Learner</SelectItem>
+                        <SelectItem value="LT">Lecturer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <div>
-                <p className="text-sm text-destructive">{errorMessage}</p>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  aria-disabled={isSubmitting}
+                  onClick={(event: any) => {
+                    if (isSubmitting) {
+                      event.preventDefault();
+                    }
+                  }}
+                >
+                  {isSubmitting ? (
+                    <LoaderCircleIcon className="animate-spin" />
+                  ) : (
+                    "Sign up"
+                  )}
+                </Button>
+                {error && <FormMessage className="pt-2">{error}</FormMessage>}
               </div>
-            )}
-            <SubmitButton>Sign up</SubmitButton>
-          </form>
+            </form>
+          </Form>
         </CardContent>
         <CardFooter>
           <div className="text-center text-sm text-muted-foreground">
@@ -102,26 +188,5 @@ export default function Component() {
         </CardFooter>
       </Card>
     </div>
-  );
-}
-
-function SubmitButton({ children }: { children: string }) {
-  const { pending } = useFormStatus();
-
-  const handleClick = (event: any) => {
-    if (pending) {
-      event.preventDefault();
-    }
-  };
-
-  return (
-    <Button
-      type="submit"
-      className="w-full"
-      aria-disabled={pending}
-      onClick={handleClick}
-    >
-      {pending ? <LoaderCircleIcon className="animate-spin" /> : children}
-    </Button>
   );
 }

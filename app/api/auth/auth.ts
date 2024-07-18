@@ -2,7 +2,6 @@
 
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { NextRequest, NextResponse } from "next/server";
 
 const secretKey = process.env.JWT_KEY;
@@ -27,8 +26,6 @@ export async function decrypt(input: string) {
 
 export async function signOut() {
   cookies().delete("session");
-
-  redirect("/sign-in");
 }
 
 export async function getSessionEmail() {
