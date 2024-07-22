@@ -1061,3 +1061,53 @@ BEGIN TRANSACTION
 	WHERE email = @email AND password = @password
 COMMIT TRANSACTION
 GO
+
+
+
+
+CREATE OR ALTER PROCEDURE [dbo].[insertCourse]
+	@title NVARCHAR(64),
+	@subtitle NVARCHAR(128),
+	@ownerEmail VARCHAR(256)
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	IF @title IS NULL OR @subtitle IS NULL OR @ownerEmail IS NULL
+	BEGIN;
+		THROW 51000, 'Title, subtitle, and owner email are required.', 1;
+	END
+
+	INSERT INTO [dbo].[course](title, subtitle, status)
+	VALUES(@title, @subtitle, 'C')
+
+	DECLARE @courseId INT = SCOPE_IDENTITY()
+	-- INSERT INTO [dbo].[ownedCourse] VALUES (@ownerEmail, @courseId, 1)
+
+	SELECT *
+	FROM [dbo].[course]
+	WHERE id = @courseId
+COMMIT TRANSACTION
+GO
+
+
+
+
+CREATE OR ALTER PROCEDURE [dbo].[selectCourse]
+	@id INT
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	IF @id IS NULL
+	BEGIN;
+		THROW 51000, 'Id is required.', 1;
+	END
+
+	SELECT *
+	FROM [dbo].[course]
+	WHERE id = @id
+COMMIT TRANSACTION
+GO
