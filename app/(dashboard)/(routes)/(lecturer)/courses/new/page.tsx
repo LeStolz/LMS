@@ -12,16 +12,14 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { LoaderCircleIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import Link from "next/link";
+import { formatError } from "@/lib/utils";
+import { createCourse } from "@/app/api/course/course";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   title: z
@@ -48,9 +46,17 @@ export default function Component() {
   });
   const { isSubmitting, isValid } = form.formState;
   const [error, setError] = useState<string | undefined>(undefined);
+  const router = useRouter();
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setError("");
+    try {
+      const course = await createCourse(values);
+      router.push(`/courses/${course.id}`);
+
+      toast.success("Course created!");
+    } catch (error) {
+      setError(formatError(error));
+    }
   }
 
   return (
@@ -100,22 +106,28 @@ export default function Component() {
             )}
           />
           <div>
-            <Button
-              type="submit"
-              className="w-full"
-              aria-disabled={isSubmitting}
-              onClick={(event: any) => {
-                if (isSubmitting) {
-                  event.preventDefault();
-                }
-              }}
-            >
-              {isSubmitting ? (
-                <LoaderCircleIcon className="animate-spin" />
-              ) : (
-                "Create course"
-              )}
-            </Button>
+            <div className="flex flex-row gap-2">
+              <Link href="/courses">
+                <Button type="button" variant="ghost">
+                  Cancel
+                </Button>
+              </Link>
+              <Button
+                type="submit"
+                aria-disabled={isSubmitting}
+                onClick={(event: any) => {
+                  if (isSubmitting) {
+                    event.preventDefault();
+                  }
+                }}
+              >
+                {isSubmitting ? (
+                  <LoaderCircleIcon className="animate-spin" />
+                ) : (
+                  "Continue"
+                )}
+              </Button>
+            </div>
             {error && <FormMessage className="pt-2">{error}</FormMessage>}
           </div>
         </form>

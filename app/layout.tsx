@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { Inter as FontSans } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
-import { AuthProvider } from "@/providers/auth-provider";
 import { ThemeProvider } from "next-themes";
+import { Toaster } from "@/components/ui/sonner";
+import QueryProvider from "@/providers/query-provider";
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -24,20 +25,16 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={cn(
-          "min-h-screen bg-background font-sans antialiased bg-gray-100 dark:bg-gray-950",
+          "min-h-screen bg-background font-sans antialiased bg-gray-50 dark:bg-gray-950",
           fontSans.variable
         )}
       >
-        <AuthProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
+        <QueryProvider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             {children}
           </ThemeProvider>
-        </AuthProvider>
+        </QueryProvider>
+        <Toaster />
       </body>
     </html>
   );

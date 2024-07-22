@@ -18,7 +18,8 @@ export async function middleware(request: NextRequest) {
     !currentUser &&
     !(
       request.nextUrl.pathname.startsWith("/sign-in") ||
-      request.nextUrl.pathname.startsWith("/sign-up")
+      request.nextUrl.pathname.startsWith("/sign-up") ||
+      request.nextUrl.pathname.startsWith("/seminar")
     )
   ) {
     return Response.redirect(new URL("/sign-in", request.url));

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
 
 import {
   Breadcrumb,
@@ -11,8 +10,6 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-
-import { Input } from "@/components/ui/input";
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";

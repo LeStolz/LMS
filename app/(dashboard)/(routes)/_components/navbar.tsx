@@ -31,7 +31,7 @@ export default function Navbar() {
   const { user, signOut } = useAuth();
 
   const routes =
-    user?.type === "LT"
+    user.data?.type === "LT"
       ? [
           {
             icon: <Home className="h-5 w-5" />,
@@ -49,7 +49,7 @@ export default function Navbar() {
             href: "/analytics",
           },
         ]
-      : user?.type === "AD"
+      : user.data?.type === "AD"
       ? [
           {
             icon: <Home className="h-5 w-5" />,
@@ -67,7 +67,7 @@ export default function Navbar() {
             href: "/lecturers",
           },
         ]
-      : user?.type === "LN"
+      : user.data?.type === "LN"
       ? [
           {
             icon: <Home className="h-5 w-5" />,
