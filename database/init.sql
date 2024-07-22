@@ -2,9 +2,7 @@
 USE master
 GO
 
-IF EXISTS (SELECT name
-FROM sys.databases
-WHERE name = N'lms')
+IF EXISTS (SELECT name FROM sys.databases WHERE name = N'lms')
 	DROP DATABASE lms
 GO
 
@@ -215,10 +213,10 @@ CREATE TABLE [dbo].[course]
 	id INT IDENTITY(1, 1) NOT NULL,
 	title NVARCHAR(64) NOT NULL,
 	subtitle NVARCHAR(128) NOT NULL,
-	description NVARCHAR(512) NOT NULL,
-	price MONEY NOT NULL,
-	level CHAR(1) NOT NULL,
-	thumbnail NVARCHAR(256) NOT NULL,
+	description NVARCHAR(MAX),
+	price MONEY,
+	level CHAR(1),
+	thumbnail NVARCHAR(256),
 	advertisementVideo NVARCHAR(256),
 	status CHAR(1) NOT NULL,
 	createdAt DATE NOT NULL DEFAULT(GETDATE()),
@@ -234,11 +232,11 @@ CREATE TABLE [dbo].[course]
 	CONSTRAINT [Course title is required and must not be longer than 60.] CHECK(0 < LEN(title) AND LEN(title) <= 60),
 	CONSTRAINT [A course with this title already exists.] UNIQUE(title),
 	CONSTRAINT [Course subtitle is required and must not be longer than 120.] CHECK(0 < LEN(subtitle) AND LEN(subtitle) <= 120),
-	CONSTRAINT [Course description is must be longer than 200.] CHECK(LEN(description) > 200),
-	CONSTRAINT [Course price must be non-negative.] CHECK(price >= 0),
-	CONSTRAINT [Course level is required.] CHECK(level IN ('B', 'I', 'A')),
-	CONSTRAINT [Course thumbnail is required.] CHECK(LEN(thumbnail) > 0),
-	CONSTRAINT [Course status is required.] CHECK(status IN ('R', 'P', 'V')),
+	CONSTRAINT [Course description is required.] CHECK(status = 'C' OR description IS NOT NULL AND LEN(description) > 0),
+	CONSTRAINT [Course price must be non-negative.] CHECK(status = 'C' OR price IS NOT NULL AND price >= 0),
+	CONSTRAINT [Course level is required.] CHECK(status = 'C' OR level IS NOT NULL AND level IN ('B', 'I', 'A')),
+	CONSTRAINT [Course thumbnail is required.] CHECK(status = 'C' OR thumbnail IS NOT NULL AND LEN(thumbnail) > 0),
+	CONSTRAINT [Course status is required.] CHECK(status IN ('C', 'R', 'P', 'V')),
 	CONSTRAINT [Course creation date must be before today.] CHECK(createdAt <= GETDATE()),
 	CONSTRAINT [Course visitor count must be non-negative.] CHECK(visitorCount >= 0),
 	CONSTRAINT [Course rating must be between 0 and 5.] CHECK(0 <= rating AND rating <= 5),
@@ -993,22 +991,42 @@ GO
 
 
 -- Create the procedures
+CREATE OR ALTER PROCEDURE [dbo].[selectUser] @email VARCHAR(256)
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	IF @email IS NULL
+	BEGIN;
+		THROW 51000, 'Email is required.', 1;
+	END
+
+	SELECT email, name, type
+	FROM [dbo].[user]
+	WHERE email = @email
+COMMIT TRANSACTION
+GO
+
+
+
+
 CREATE OR ALTER PROCEDURE [dbo].[selectUserByCred]
 	@email VARCHAR(256),
 	@password VARCHAR(128)
 AS
 BEGIN TRANSACTION
-SET XACT_ABORT ON
-SET NOCOUNT ON
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
 
-IF @email IS NULL OR @password IS NULL
-BEGIN;
-	THROW 51000, 'Email and password are required.', 1;
-END
+	IF @email IS NULL OR @password IS NULL
+	BEGIN;
+		THROW 51000, 'Email and password are required.', 1;
+	END
 
-SELECT *
-FROM [dbo].[user]
-WHERE email = @email AND password = @password
+	SELECT *
+	FROM [dbo].[user]
+	WHERE email = @email AND password = @password
 COMMIT TRANSACTION
 GO
 
@@ -1022,19 +1040,24 @@ CREATE OR ALTER PROCEDURE [dbo].[insertUser]
 	@type CHAR(2)
 AS
 BEGIN TRANSACTION
-SET XACT_ABORT ON
-SET NOCOUNT ON
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
 
-IF @email IS NULL OR @password IS NULL OR @name IS NULL OR @type IS NULL
+	IF @email IS NULL OR @password IS NULL OR @name IS NULL OR @type IS NULL
 	BEGIN;
-	THROW 51000, 'Email, password, name, and type are required.', 1;
-END
+		THROW 51000, 'Email, password, name, and type are required.', 1;
+	END
 
-INSERT INTO [dbo].[user]
-VALUES(@email, @password, @name, @type)
+	IF @type = 'AD'
+	BEGIN;
+		THROW 51000, 'Admin users cannot be created.', 1;
+	END
 
-SELECT *
-FROM [dbo].[user]
-WHERE email = @email AND password = @password
+	INSERT INTO [dbo].[user]
+	VALUES(@email, @password, @name, @type)
+
+	SELECT *
+	FROM [dbo].[user]
+	WHERE email = @email AND password = @password
 COMMIT TRANSACTION
 GO
