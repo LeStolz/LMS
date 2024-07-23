@@ -9,13 +9,13 @@ export async function updateCourseSubtitle({
   subtitle: string;
   id: number;
 }) {
+  console.log("got request");
+
   try {
-    (
-      await (await db())
-        .input("subtitle", subtitle)
-        .input("id", id)
-        .execute("updateCourseSubtitle")
-    ).recordset?.[0] ?? null;
+    (await db())
+      .input("subtitle", subtitle)
+      .input("id", id)
+      .execute("updateCourseSubtitle");
   } catch (error) {
     throw error;
   }
@@ -23,8 +23,7 @@ export async function updateCourseSubtitle({
 
 export async function searchCourse({ title }: { title: string }) {
   try {
-    (await (await db()).input("title", title).execute("searchCourse"))
-      .recordset?.[0] ?? null;
+    (await db()).input("title", title).execute("searchCourse");
   } catch (error) {
     throw error;
   }

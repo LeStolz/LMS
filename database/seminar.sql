@@ -1,3 +1,6 @@
+USE [LMS]
+GO
+
 CREATE OR ALTER PROCEDURE searchCourse @title NVARCHAR(256)
 AS
 BEGIN TRAN
@@ -32,3 +35,10 @@ BEGIN TRAN
 	WHERE id LIKE @id
 COMMIT TRAN;
 GO
+
+INSERT INTO [dbo].[course] ([title], [subtitle], [status]) VALUES
+('1', '1', 'C');
+INSERT INTO [dbo].[course] ([title], [subtitle], [status]) VALUES
+('2', '2', 'C');
+INSERT INTO [dbo].[course] ([title], [subtitle], [status]) VALUES
+('3', '3', 'C');

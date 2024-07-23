@@ -3,11 +3,9 @@
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { searchCourse, updateCourseSubtitle } from "../api/seminar/seminar";
-import { useRouter } from "next/navigation";
 
 export default function Page() {
   const [intervalId, setIntervalId] = useState<number>();
-  const [count, setCount] = useState(0);
 
   return (
     <div className="container flex justify-center items-center h-screen">
@@ -20,17 +18,22 @@ export default function Page() {
             onClick={() =>
               setIntervalId(
                 window.setInterval(() => {
-                  setCount((count) => (count + 1) % 100);
+                  const id = Math.random() * 3 + 1;
 
                   updateCourseSubtitle({
                     subtitle: Math.random().toString(),
-                    id: count,
+                    id: id,
+                  });
+
+                  updateCourseSubtitle({
+                    subtitle: Math.random().toString(),
+                    id: id,
                   });
 
                   searchCourse({
                     title: Math.random().toString(),
                   });
-                }, 100)
+                }, 1000)
               )
             }
           >
