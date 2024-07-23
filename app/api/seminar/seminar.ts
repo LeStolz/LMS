@@ -9,7 +9,6 @@ export async function updateCourseSubtitle({
   subtitle: string;
   id: number;
 }) {
-  console.log("got request");
 
   try {
     (await db())
