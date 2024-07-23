@@ -15,16 +15,24 @@ export async function updateCourseSubtitle({
     (await db())
       .input("subtitle", subtitle)
       .input("id", id)
-      .execute("updateCourseSubtitle");
+      .execute("updateCourseSubtitle").catch((err) => {
+        console.error("Error: Request timed out");
+      })
   } catch (error) {
-    throw error;
+    if(error instanceof Error) {
+      console.error("Error: Request timed out");
+    }
   }
 }
 
 export async function searchCourse({ title }: { title: string }) {
   try {
-    (await db()).input("title", title).execute("searchCourse");
+    (await db()).input("title", title).execute("searchCourse").catch(error => {
+      console.error("Error: Request timed out");
+    })
   } catch (error) {
-    throw error;
+    if(error instanceof Error) {
+      console.error("Error: Request timed out");
+    }
   }
 }

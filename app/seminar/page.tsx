@@ -6,7 +6,7 @@ import { searchCourse, updateCourseSubtitle } from "../api/seminar/seminar";
 
 export default function Page() {
   const [intervalId, setIntervalId] = useState<number>();
-
+  
   return (
     <div className="container flex justify-center items-center h-screen">
       <div className="flex flex-col">
@@ -18,8 +18,9 @@ export default function Page() {
             onClick={() =>
               setIntervalId(
                 window.setInterval(() => {
-                  const id = Math.random() * 3 + 1;
-
+                  const title = ["the", "of", "and", "a", "an", "sql", "how"];
+                  const id = Math.floor(Math.random() * 3 + 4);
+                  console.log(id);
                   updateCourseSubtitle({
                     subtitle: Math.random().toString(),
                     id: id,
@@ -31,9 +32,9 @@ export default function Page() {
                   });
 
                   searchCourse({
-                    title: Math.random().toString(),
+                    title: title[Math.floor(Math.random() * title.length)]
                   });
-                }, 1000)
+                }, 3000)
               )
             }
           >
