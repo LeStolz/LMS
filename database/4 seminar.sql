@@ -1,18 +1,21 @@
 USE [LMS]
 GO
 
-CREATE OR ALTER PROCEDURE searchCourse @title NVARCHAR(256)
+CREATE OR ALTER PROCEDURE searchCourse1 @title NVARCHAR(256)
 WITH RECOMPILE
 AS 
 BEGIN TRAN
 	SET TRANSACTION ISOLATION LEVEL SERIALIZABLE
+
+	DECLARE @str nvarchar(256)
+	SET @str = @title + '*'
 
 	SELECT * 
 	FROM [dbo].[course] c
 	LEFT JOIN [dbo].[ownedCourse] oc on oc.courseId = c.id
 	LEFT JOIN [dbo].[courseSection] cs on cs.courseId = c.id
 	LEFT JOIN [dbo].[courseCategory] cc on cc.courseId = c.id
-	WHERE CONTAINS(c.title, @title) --OR CONTAINS(c.subtitle, @title)
+	WHERE CONTAINS(c.title, @str) OR CONTAINS(c.subtitle, @str)
 	ORDER BY c.rating
 
 	CHECKPOINT;
