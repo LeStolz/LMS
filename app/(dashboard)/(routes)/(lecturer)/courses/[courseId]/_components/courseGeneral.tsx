@@ -1,11 +1,13 @@
 import {
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+
 import {
   Select,
   SelectContent,
@@ -13,13 +15,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useFormContext } from "react-hook-form";
+import { CourseCategories } from "./courseCategories";
 
 export default function CourseGeneral() {
   const form = useFormContext();
 
   return (
-    <>
+    <div className="space-y-6 mt-6">
       <FormField
         control={form.control}
         name="title"
@@ -73,10 +77,53 @@ export default function CourseGeneral() {
                 <SelectItem value="A">Advanced</SelectItem>
               </SelectContent>
             </Select>
+            <FormDescription>
+              Course level is required for publishing.
+            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
       />
-    </>
+      <FormField
+        control={form.control}
+        name="description"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Description</FormLabel>
+            <FormControl>
+              <Textarea
+                placeholder="Tell us a bit more about your course"
+                {...field}
+              />
+            </FormControl>
+            <FormDescription>
+              Description should be at least 200 words long for publishing.
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <CourseCategories />
+
+      <FormField
+        control={form.control}
+        name="price"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Price in $</FormLabel>
+            <FormControl>
+              <Input
+                type="number"
+                min={0}
+                placeholder="Enter your course price in $"
+                {...field}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </div>
   );
 }
