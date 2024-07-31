@@ -9,9 +9,9 @@ BEGIN TRAN
 
 	SELECT * 
 	FROM [dbo].[course] c
-	LEFT JOIN [dbo].[ownedCourse] oc on oc.courseId = c.id
-	LEFT JOIN [dbo].[courseSection] cs on cs.courseId = c.id
-	LEFT JOIN [dbo].[courseCategory] cc on cc.courseId = c.id
+	LEFT JOIN [dbo].[ownedCourse] oc ON oc.courseId = c.id
+	LEFT JOIN [dbo].[courseSection] cs ON cs.courseId = c.id
+	LEFT JOIN [dbo].[courseCategory] cc ON cc.courseId = c.id
 	WHERE c.title LIKE '%'+ @title +'%' OR c.subtitle LIKE '%'+ @title +'%'	
 	ORDER BY c.rating
 

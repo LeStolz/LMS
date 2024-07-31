@@ -18,7 +18,7 @@ export default function Page() {
             onClick={() =>
               setIntervalId(
                 window.setInterval(() => {
-                  const title = ["the", "of", "and", "a", "an", "sql", "how"];
+                  const title = ["the", "of", "and", "a", "an", "is", "how"];
                   const id = Math.floor(Math.random() * 3 + 4);
                   console.log(id);
                   updateCourseSubtitle({
