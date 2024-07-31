@@ -1,31 +1,69 @@
 "use client";
 
-import { getUser } from "@/app/api/user/get-user";
-import { User } from "@/types/user";
-import { useQuery } from "@tanstack/react-query";
-import { createContext, useContext } from "react";
-
-type AuthContextType = {
-  user: User | undefined;
-};
-
-const AuthContext = createContext<AuthContextType>({
-  user: undefined,
-});
+import { signOut } from "@/app/api/auth/auth";
+import { getSession, signIn, signUp } from "@/app/api/user/user";
+import { formatError } from "@/lib/utils";
+import { UserWithPassword } from "@/types/user";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 
 export function useAuth() {
-  return useContext(AuthContext);
-}
+  const router = useRouter();
+  const queryClient = useQueryClient();
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const { data: user } = useQuery({
+  const user = useQuery({
     queryKey: ["user"],
-    queryFn: async () => {
-      return (await getUser()).body;
+    queryFn: () => getSession(),
+  });
+
+  const signUpMutation = useMutation({
+    mutationFn: signUp,
+    onSuccess: (data) => {
+      queryClient.setQueryData(["user"], data);
     },
   });
 
-  return (
-    <AuthContext.Provider value={{ user }}>{children}</AuthContext.Provider>
-  );
-};
+  const signInMutation = useMutation({
+    mutationFn: signIn,
+    onSuccess: (data) => {
+      queryClient.setQueryData(["user"], data);
+    },
+  });
+
+  const signOutWrapper = async () => {
+    try {
+      await signOut();
+
+      router.push("/sign-in");
+    } catch (error) {
+      return formatError(error);
+    }
+  };
+
+  const signUpWrapper = async (user: UserWithPassword) => {
+    try {
+      await signUpMutation.mutateAsync(user);
+
+      user && router.push("/");
+    } catch (error) {
+      return formatError(error);
+    }
+  };
+
+  const signInWrapper = async (email: string, password: string) => {
+    try {
+      await signInMutation.mutateAsync({ email, password });
+
+      user && router.push("/");
+    } catch (error) {
+      return formatError(error);
+    }
+  };
+
+  return {
+    user: user,
+    signIn: signInWrapper,
+    signUp: signUpWrapper,
+    signOut: signOutWrapper,
+  };
+}

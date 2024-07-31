@@ -2,8 +2,12 @@ import type { Metadata } from "next";
 import { Inter as FontSans } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
-import { AuthProvider } from "@/providers/auth-provider";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ThemeProvider } from "next-themes";
+import { Toaster } from "@/components/ui/sonner";
+import QueryProvider from "@/providers/query-provider";
+import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
+import { extractRouterConfig } from "uploadthing/server";
+import { ourFileRouter } from "./api/uploadthing/core";
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -15,27 +19,27 @@ export const metadata: Metadata = {
   description: "Learning Management System",
 };
 
-const queryClient = new QueryClient();
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <html lang="en">
-          <body
-            className={cn(
-              "min-h-screen bg-background font-sans antialiased",
-              fontSans.variable
-            )}
-          >
+    <html lang="en">
+      <body
+        className={cn(
+          "min-h-screen bg-background font-sans antialiased bg-gray-50 dark:bg-gray-950",
+          fontSans.variable
+        )}
+      >
+        <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
+        <QueryProvider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             {children}
-          </body>
-        </html>
-      </AuthProvider>
-    </QueryClientProvider>
+          </ThemeProvider>
+        </QueryProvider>
+        <Toaster />
+      </body>
+    </html>
   );
 }
