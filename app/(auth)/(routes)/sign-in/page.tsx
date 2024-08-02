@@ -53,7 +53,7 @@ export default function Component() {
       <Card className="min-w-96 p-2">
         <CardHeader>
           <CardTitle>
-            <h2 className="text-3xl font-bold">Sign in to your account</h2>
+            <span className="text-3xl font-bold">Sign in to your account</span>
           </CardTitle>
           <CardDescription>Get started with LMS today.</CardDescription>
         </CardHeader>

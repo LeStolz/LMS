@@ -53,8 +53,6 @@ export async function getCourse<B extends boolean>({
         .execute("selectCourse")
     ).recordset?.[0];
 
-    console.log(course);
-
     course.categories = JSON.parse(course.categories).filter(
       (category: Object) => category.hasOwnProperty("id")
     );
@@ -82,8 +80,6 @@ export async function updateCourse({
   if (!user) {
     throw new Error("Unauthorized.");
   }
-
-  console.log(categoryIds);
 
   try {
     const course: Course = (

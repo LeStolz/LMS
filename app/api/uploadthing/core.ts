@@ -30,6 +30,13 @@ export const ourFileRouter = {
   courseSectionVideo: f({ video: { maxFileSize: "2MB", maxFileCount: 1 } })
     .middleware(() => auth())
     .onUploadComplete(() => {}),
+
+  profileCertImages: f(["image"])
+    .middleware(() => auth())
+    .onUploadComplete(() => {}),
+  profileWorkImages: f(["image"])
+    .middleware(() => auth())
+    .onUploadComplete(() => {}),
 } satisfies FileRouter;
 
 export type OurFileRouter = typeof ourFileRouter;

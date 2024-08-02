@@ -7,15 +7,23 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatError(error: unknown) {
   if (error instanceof Error) {
-    if (error.message.includes("'")) {
-      const message = error.message.split("'")[1];
+    let pos1 = error.message.indexOf("'");
+    let pos2 = error.message.indexOf('"');
+
+    if (pos1 != -1 || pos2 != -1) {
+      pos1 = pos1 == -1 ? Infinity : pos1;
+      pos2 = pos2 == -1 ? Infinity : pos2;
+
+      let delimiter = pos1 < pos2 ? "'" : '"';
+
+      const message = error.message.split(delimiter)[1];
 
       if (message.includes("_")) {
         const type = message.split("_")[0];
         const table = message.split("_")[1];
 
         if (type === "pk") {
-          return `This ${table} already exists`;
+          return `This ${table} already exists.`;
         }
       }
 
@@ -25,7 +33,7 @@ export function formatError(error: unknown) {
     return error.message;
   }
 
-  return "Something went wrong. Please try again later";
+  return "Something went wrong. Please try again later.";
 }
 
 export function toCapitalCase(str: string) {

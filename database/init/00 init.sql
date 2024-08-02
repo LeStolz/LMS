@@ -883,7 +883,7 @@ CREATE TABLE [dbo].[bankAccount]
 	goodThru DATE NOT NULL,
 	cvc VARCHAR(3) NOT NULL,
 	cardholderName VARCHAR(128) NOT NULL,
-	region VARCHAR(64) NOT NULL,
+	region VARCHAR(64),
 	zip VARCHAR(16) NOT NULL,
 	inAppBalance MONEY NOT NULL DEFAULT 0,
 
@@ -894,7 +894,6 @@ CREATE TABLE [dbo].[bankAccount]
 	CONSTRAINT [Bank account good thru date must be after today.] CHECK(goodThru > GETDATE()),
 	CONSTRAINT [Bank account CVC must be 3 digits long.] CHECK(LEN(cvc) = 3),
 	CONSTRAINT [Bank account cardholder name is required.] CHECK(LEN(cardholderName) > 0),
-	CONSTRAINT [Bank account region is required.] CHECK(LEN(region) > 0),
 	CONSTRAINT [Bank account zip code is required.] CHECK(LEN(zip) > 0),
 	CONSTRAINT [Bank account balance must be non-negative.] CHECK(inAppBalance >= 0),
 

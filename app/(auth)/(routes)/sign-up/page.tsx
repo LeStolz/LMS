@@ -66,7 +66,7 @@ export default function Component() {
       <Card className="min-w-96 p-2">
         <CardHeader>
           <CardTitle>
-            <h2 className="text-3xl font-bold">Create your account</h2>
+            <span className="text-3xl font-bold">Create your account</span>
           </CardTitle>
           <CardDescription>Get started with LMS today.</CardDescription>
         </CardHeader>
@@ -133,7 +133,6 @@ export default function Component() {
                     <FormLabel>Role</FormLabel>
 
                     <Select
-                      required
                       {...field}
                       onValueChange={field.onChange}
                       defaultValue={field.value}

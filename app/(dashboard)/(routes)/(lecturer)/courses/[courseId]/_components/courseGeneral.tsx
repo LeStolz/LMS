@@ -61,7 +61,6 @@ export default function CourseGeneral() {
           <FormItem>
             <FormLabel>Level</FormLabel>
             <Select
-              required
               {...field}
               onValueChange={field.onChange}
               defaultValue={field.value}
