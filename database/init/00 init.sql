@@ -186,19 +186,11 @@ CREATE TABLE [dbo].[category]
 (
 	id SMALLINT IDENTITY(1, 1) NOT NULL,
 	title NVARCHAR(64) NOT NULL,
-	courseCount INT NOT NULL DEFAULT(0),
-	learnerCount INT NOT NULL DEFAULT(0),
-	rating FLOAT NOT NULL DEFAULT(0),
-	monthlyRevenueGenerated MONEY NOT NULL DEFAULT(0),
 	parentId SMALLINT DEFAULT(NULL),
 
 	CONSTRAINT [category title is required.] CHECK(LEN(title) > 0),
 	CONSTRAINT [A category with this title already exists.] UNIQUE(title),
 	CONSTRAINT [A category cannot be its own parent.] CHECK(parentId <> id),
-	CONSTRAINT [Category course count must be non-negative.] CHECK(courseCount >= 0),
-	CONSTRAINT [Category learner count must be non-negative.] CHECK(learnerCount >= 0),
-	CONSTRAINT [Category rating must be between 0 and 5.] CHECK(0 <= rating AND rating <= 5),
-	CONSTRAINT [Category monthly revenue generated must be non-negative.] CHECK(monthlyRevenueGenerated >= 0),
 
 	CONSTRAINT [fk_category_parent] FOREIGN KEY(parentId) REFERENCES [dbo].[category](id),
 	CONSTRAINT [pk_category] PRIMARY KEY(id)
@@ -229,12 +221,12 @@ CREATE TABLE [dbo].[course]
 	lecturerCount TINYINT NOT NULL DEFAULT(1),
 	minutesToComplete SMALLINT NOT NULL DEFAULT(0),
 	updatedAt DATE NOT NULL DEFAULT(GETDATE()),
-	monthlyRevenueGenerated MONEY NOT NULL DEFAULT(0),
 
 	CONSTRAINT [Course title is required and must not be longer than 60.] CHECK(0 < LEN(title) AND LEN(title) <= 60),
 	CONSTRAINT [A course with this title already exists.] UNIQUE(title),
 	CONSTRAINT [Course subtitle is required and must not be longer than 120.] CHECK(0 < LEN(subtitle) AND LEN(subtitle) <= 120),
-	CONSTRAINT [Course description is required.] CHECK(status = 'C' OR description IS NOT NULL AND LEN(description) > 0),
+	CONSTRAINT [Course description must be at least 200 words long.]
+		CHECK(status = 'C' OR description IS NOT NULL AND LEN(description) - LEN(REPLACE(description, ' ', '')) + 1 > 200),
 	CONSTRAINT [Course price must be non-negative.] CHECK(status = 'C' OR price IS NOT NULL AND price >= 0),
 	CONSTRAINT [Course level is required.] CHECK(status = 'C' OR level IS NOT NULL AND level IN ('B', 'I', 'A')),
 	CONSTRAINT [Course thumbnail is required.] CHECK(status = 'C' OR thumbnail IS NOT NULL AND LEN(thumbnail) > 0),
@@ -247,7 +239,6 @@ CREATE TABLE [dbo].[course]
 	CONSTRAINT [Course lecturer count must be non-negative.] CHECK(lecturerCount >= 0),
 	CONSTRAINT [Course minutes to complete must be non-negative.] CHECK(minutesToComplete >= 0),
 	CONSTRAINT [Course update date must be before today.] CHECK(updatedAt <= GETDATE()),
-	CONSTRAINT [Course monthly revenue generated must be non-negative.] CHECK(monthlyRevenueGenerated >= 0),
 
 	CONSTRAINT [pk_course] PRIMARY KEY(id)
 );
@@ -270,6 +261,67 @@ CREATE TABLE [dbo].[courseCategory]
 
 	CONSTRAINT [pk_courseCategory] PRIMARY KEY(courseId, categoryId)
 );
+GO
+
+
+
+
+CREATE FUNCTION [dbo].[getCategoryCourseCount](@id INT)
+RETURNS INT
+AS
+BEGIN
+	RETURN (SELECT COUNT(*) FROM [dbo].[courseCategory] WHERE categoryId = @id);
+END
+GO
+
+ALTER TABLE [dbo].[category] ADD courseCount AS [dbo].[getCategoryCourseCount](id)
+GO
+
+
+CREATE FUNCTION [dbo].[getCategoryLearnerCount](@id INT)
+RETURNS INT
+AS
+BEGIN
+	RETURN (
+		SELECT * FROM [dbo].[enrolledCourse] ec
+		JOIN [dbo].[courseCategory] cc ON ec.courseId = cc.courseId
+		WHERE cc.categoryId = @id
+	)
+END
+GO
+
+ALTER TABLE [dbo].[category] ADD learnerCount AS [dbo].[getCategoryLearnerCount](id)
+GO
+
+
+CREATE FUNCTION [dbo].[getCategoryRating](@id INT)
+RETURNS INT
+AS
+BEGIN
+	RETURN (
+		SELECT AVG(c.rating) FROM [dbo].[courseCategory] cc
+		JOIN [dbo].[course] c ON cc.courseId = c.id
+		WHERE cc.categoryId = @id
+	)
+END
+GO
+
+ALTER TABLE [dbo].[category] ADD rating AS [dbo].[getCategoryRating](id)
+GO
+
+CREATE FUNCTION [dbo].[getCategoryMonthlyRevenueGenerated](@id INT)
+RETURNS INT
+AS
+BEGIN
+	RETURN (
+		SELECT SUM(mci.income) FROM [dbo].[courseCategory] cc
+		JOIN [dbo].[monthlyCourseIncome] mci ON cc.courseId = mci.courseId
+		WHERE cc.categoryId = @id AND mci.date = DATEFROMPARTS(YEAR(date), MONTH(date), 1)
+	)
+END
+GO
+
+ALTER TABLE [dbo].[category] ADD monthlyRevenueGenerated AS [dbo].[getCategoryMonthlyRevenueGenerated](id)
 GO
 
 
@@ -365,6 +417,34 @@ CREATE TABLE [dbo].[courseAnnouncement]
 GO
 
 
+CREATE OR ALTER TRIGGER [dbo].[tg_limitCourseAnnouncement]
+ON [dbo].[courseAnnouncement]
+INSTEAD OF INSERT
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	DECLARE @senderId INT = (SELECT senderId FROM inserted)
+	DECLARE @courseId INT = (SELECT courseId FROM inserted)
+
+	DECLARE @date DATE = DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
+
+	IF ((
+		SELECT COUNT (*) FROM [dbo].[courseAnnouncement]
+		WHERE senderId = @senderId AND courseId = @courseId
+		AND DATEFROMPARTS(YEAR(createdAt), MONTH(createdAt), 1) = @date
+	) >= 4)
+	BEGIN;
+		THROW 51000, 'You can only post 4 announcements per month per course.', 1
+	END
+
+	INSERT INTO [dbo].[courseAnnouncement](senderId, courseId, title, content)
+	SELECT senderId, courseId, title, content FROM inserted
+COMMIT TRANSACTION
+GO
+
+
 IF OBJECT_ID('[dbo].[courseReview]', 'U') IS NOT NULL
 	DROP TABLE [dbo].[courseReview]
 GO
@@ -389,6 +469,48 @@ CREATE TABLE [dbo].[courseReview]
 GO
 
 
+CREATE OR ALTER TRIGGER [dbo].[tg_updateCourseRating]
+ON [dbo].[courseReview]
+AFTER INSERT
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	DECLARE @courseId INT = (SELECT courseId FROM inserted)
+
+	UPDATE [dbo].[course]
+	SET raterCount += 1
+	WHERE id = @courseId
+
+	UPDATE [dbo].[course]
+	SET rating = (rating * raterCount + (SELECT rating FROM inserted)) / raterCount
+	WHERE id = @courseId
+COMMIT TRANSACTION
+GO
+
+
+CREATE FUNCTION [dbo].[getEnrolledCourseStatus](@learnerId INT, @courseId INT)
+RETURNS CHAR(1)
+AS
+BEGIN
+	IF (NOT EXISTS(
+		SELECT * FROM [dbo].[courseSectionProgress]
+		WHERE learnerId = @learnerId AND courseId = @courseId AND completionPercentage != 1
+	))
+		RETURN 'F'
+
+	IF (EXISTS(
+		SELECT * FROM [dbo].[courseSectionProgress]
+		WHERE learnerId = @learnerId AND courseId = @courseId AND completionPercentage != 0
+	))
+		RETURN 'L'
+
+	RETURN 'B'
+END
+GO
+
+
 IF OBJECT_ID('[dbo].[enrolledCourse]', 'U') IS NOT NULL
 	DROP TABLE [dbo].[enrolledCourse]
 GO
@@ -397,9 +519,7 @@ CREATE TABLE [dbo].[enrolledCourse]
 (
 	learnerId INT NOT NULL,
 	courseId INT NOT NULL,
-	status CHAR(1) NOT NULL,
-
-	CONSTRAINT [Enrolled course status is required.] CHECK(status IN ('B', 'L', 'F')),
+	status AS [dbo].[getEnrolledCourseStatus](learnerId, courseId),
 
 	CONSTRAINT [fk_enrolledCourse_learner] FOREIGN KEY(learnerId) REFERENCES [dbo].[learner](id)
 	ON DELETE CASCADE,
@@ -408,6 +528,21 @@ CREATE TABLE [dbo].[enrolledCourse]
 
 	CONSTRAINT [pk_enrolledCourse] PRIMARY KEY(learnerId, courseId)
 );
+GO
+
+
+CREATE OR ALTER TRIGGER [dbo].[tg_updateCourseLearnerCount]
+ON [dbo].[enrolledCourse]
+AFTER INSERT
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	UPDATE [dbo].[course]
+	SET learnerCount += 1
+	WHERE id = (SELECT courseId FROM inserted)
+COMMIT TRANSACTION
 GO
 
 
@@ -476,6 +611,31 @@ CREATE TABLE [dbo].[courseLesson]
 
 	CONSTRAINT [pk_courseLesson] PRIMARY KEY(id, courseId)
 );
+GO
+
+
+CREATE OR ALTER TRIGGER [dbo].[tg_updateCourseMinutesToComplete]
+ON [dbo].[courseLesson]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	IF EXISTS(SELECT * FROM inserted)
+	BEGIN
+		UPDATE [dbo].[course]
+		SET minutesToComplete += (SELECT durationInMinutes FROM inserted)
+		WHERE id = (SELECT courseId FROM inserted)
+	END
+
+	IF EXISTS(SELECT * FROM deleted)
+	BEGIN
+		UPDATE [dbo].[course]
+		SET minutesToComplete -= (SELECT durationInMinutes FROM deleted)
+		WHERE id = (SELECT courseId FROM deleted)
+	END
+COMMIT TRANSACTION
 GO
 
 
@@ -991,8 +1151,8 @@ CREATE TABLE [dbo].[transaction]
 	transactionFee MONEY NOT NULL,
 	sharePercentage FLOAT NOT NULL,
 	discountPercentage FLOAT NOT NULL,
-	netAmount MONEY NOT NULL,
-	revenue MONEY NOT NULL,
+	netAmount AS ((paidAmount - transactionFee - taxPercentage * paidAmount) * (1 - discountPercentage)),
+	revenue AS (((paidAmount - transactionFee - taxPercentage * paidAmount) * (1 - discountPercentage)) * sharePercentage),
 
 	CONSTRAINT [Transaction details cannot be all empty.]
 		CHECK(initiatorId IS NOT NULL OR receiverId IS NOT NULL OR courseId IS NOT NULL),
@@ -1001,8 +1161,6 @@ CREATE TABLE [dbo].[transaction]
 	CONSTRAINT [Transaction fee must be non-negative.] CHECK(transactionFee >= 0),
 	CONSTRAINT [Transaction share percentage must be between 0 and 1.] CHECK(0 <= sharePercentage AND sharePercentage <= 1),
 	CONSTRAINT [Transaction discount percentage must be between 0 and 1.] CHECK(0 <= discountPercentage AND discountPercentage <= 1),
-	CONSTRAINT [Transaction net amount must be non-negative.] CHECK(netAmount >= 0),
-	CONSTRAINT [Transaction revenue must be non-negative.] CHECK(revenue >= 0),
 
 	CONSTRAINT [fk_transaction_initiator] FOREIGN KEY(initiatorId) REFERENCES [dbo].[learner](id),
 	CONSTRAINT [fk_transaction_receiver] FOREIGN KEY(receiverId) REFERENCES [dbo].[lecturer](id),
@@ -1010,4 +1168,34 @@ CREATE TABLE [dbo].[transaction]
 
 	CONSTRAINT [pk_transaction] PRIMARY KEY(initiatorId, receiverId, courseId, createdAt)
 );
+GO
+
+
+CREATE OR ALTER TRIGGER [dbo].[tg_updateCourseMonthlyRevenueGenerated]
+ON [dbo].[transaction]
+AFTER INSERT
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	DECLARE @courseId INT = (SELECT courseId FROM inserted)
+
+	DECLARE @date DATE = DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
+
+	IF (EXISTS(
+		SELECT * FROM [dbo].[monthlyCourseIncome]
+		WHERE courseId = @courseId AND DATEFROMPARTS(YEAR(date), MONTH(date), 1) = @date
+	))
+	BEGIN
+		UPDATE [dbo].[monthlyCourseIncome]
+		SET income += (SELECT revenue FROM inserted)
+		WHERE courseId = @courseId AND DATEFROMPARTS(YEAR(date), MONTH(date), 1) = @date
+	END
+	ELSE
+	BEGIN
+		INSERT INTO [dbo].[monthlyCourseIncome](courseId, date, income)
+		VALUES(@courseId, @date, (SELECT revenue FROM inserted))
+	END
+COMMIT TRANSACTION
 GO
