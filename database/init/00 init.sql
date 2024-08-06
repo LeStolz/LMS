@@ -913,6 +913,7 @@ CREATE TABLE [dbo].[bankAccount]
 	CONSTRAINT [Bank account owner cannot be an admin.] CHECK(
 		[dbo].[isBankAccountOwnerNotAdmin](ownerId) = 1
 	),
+	CONSTRAINT [A bank account with this number already exists.] UNIQUE(accountNumber),
 	CONSTRAINT [Bank account number must be 16 digits long.] CHECK(LEN(accountNumber) = 16),
 	CONSTRAINT [Bank account good thru date must be after today.] CHECK(goodThru > GETDATE()),
 	CONSTRAINT [Bank account CVC must be 3 digits long.] CHECK(LEN(cvc) = 3),
@@ -925,7 +926,7 @@ CREATE TABLE [dbo].[bankAccount]
 
 	CONSTRAINT [fk_bankAccount_region] FOREIGN KEY(regionId) REFERENCES [dbo].[region](id),
 
-	CONSTRAINT [pk_bankAccount] PRIMARY KEY(ownerId, accountNumber),
+	CONSTRAINT [pk_bankAccount] PRIMARY KEY(ownerId),
 );
 GO
 
