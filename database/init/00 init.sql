@@ -25,27 +25,29 @@ GO
 
 CREATE TABLE [dbo].[user]
 (
+	id INT IDENTITY(1, 1) NOT NULL,
 	email VARCHAR(256) NOT NULL,
 	password VARCHAR(128) NOT NULL,
 	name NVARCHAR(128) NOT NULL,
 	type CHAR(2) NOT NULL CHECK(type IN ('AD', 'LN', 'LT')),
 
 	CONSTRAINT [User email format is invalid.] CHECK(email LIKE '%_@__%.__%'),
+	CONSTRAINT [A user with this email already exists.] UNIQUE(email),
 	CONSTRAINT [User password must be at least 5 characters long.] CHECK(LEN(password) > 4),
 	CONSTRAINT [User name is required.] CHECK(LEN(name) > 0),
 
-	CONSTRAINT [pk_user] PRIMARY KEY(email)
+	CONSTRAINT [pk_user] PRIMARY KEY(id)
 );
 GO
 
 
 
 
-CREATE FUNCTION [dbo].[isValidUser](@email VARCHAR(256), @type CHAR(2))
+CREATE FUNCTION [dbo].[isValidUser](@id INT, @type CHAR(2))
 RETURNS BIT
 AS
 BEGIN
-	IF (EXISTS(SELECT email FROM [dbo].[user] WHERE email = @email AND type = @type))
+	IF (EXISTS(SELECT id FROM [dbo].[user] WHERE id = @id AND type = @type))
 		RETURN 1
 
 	RETURN 0
@@ -59,11 +61,11 @@ GO
 
 CREATE TABLE [dbo].[admin]
 (
-	email VARCHAR(256) NOT NULL CHECK([dbo].[isValidUser](email, 'AD') = 1),
+	id INT NOT NULL CHECK([dbo].[isValidUser](id, 'AD') = 1),
 
-	CONSTRAINT [fk_admin_user] FOREIGN KEY(email) REFERENCES [dbo].[user](email)
+	CONSTRAINT [fk_admin_user] FOREIGN KEY(id) REFERENCES [dbo].[user](id)
 	ON DELETE CASCADE,
-	CONSTRAINT [pk_admin] PRIMARY KEY(email)
+	CONSTRAINT [pk_admin] PRIMARY KEY(id)
 );
 GO
 
@@ -76,11 +78,11 @@ GO
 
 CREATE TABLE [dbo].[learner]
 (
-	email VARCHAR(256) NOT NULL CHECK([dbo].[isValidUser](email, 'LN') = 1),
+	id INT NOT NULL CHECK([dbo].[isValidUser](id, 'LN') = 1),
 
-	CONSTRAINT [fk_learner_user] FOREIGN KEY(email) REFERENCES [dbo].[user](email)
+	CONSTRAINT [fk_learner_user] FOREIGN KEY(id) REFERENCES [dbo].[user](id)
 	ON DELETE CASCADE,
-	CONSTRAINT [pk_learner] PRIMARY KEY(email)
+	CONSTRAINT [pk_learner] PRIMARY KEY(id)
 );
 GO
 
@@ -93,7 +95,7 @@ GO
 
 CREATE TABLE [dbo].[lecturer]
 (
-	email VARCHAR(256) NOT NULL CHECK([dbo].[isValidUser](email, 'LT') = 1),
+	id INT NOT NULL CHECK([dbo].[isValidUser](id, 'LT') = 1),
 	dob DATE NOT NULL,
 	gender CHAR(1) NOT NULL,
 	homeAddress NVARCHAR(256) NOT NULL,
@@ -122,9 +124,9 @@ CREATE TABLE [dbo].[lecturer]
 	CONSTRAINT [Lecturer status is required.] CHECK(status IN ('R', 'P', 'V')),
 	CONSTRAINT [Lecturer demand verification date must be before today.] CHECK(demandVerificationDate <= GETDATE()),
 
-	CONSTRAINT [fk_lecturer_user] FOREIGN KEY(email) REFERENCES [dbo].[user](email)
+	CONSTRAINT [fk_lecturer_user] FOREIGN KEY(id) REFERENCES [dbo].[user](id)
 	ON DELETE CASCADE,
-	CONSTRAINT [pk_lecturer] PRIMARY KEY(email)
+	CONSTRAINT [pk_lecturer] PRIMARY KEY(id)
 );
 GO
 
@@ -135,16 +137,16 @@ GO
 
 CREATE TABLE [dbo].[certificate]
 (
-	lecturerEmail VARCHAR(256) NOT NULL,
+	lecturerId INT NOT NULL,
 	title NVARCHAR(128) NOT NULL,
 	image NVARCHAR(256) NOT NULL,
 
 	CONSTRAINT [Certificate title is required.] CHECK(LEN(title) > 0),
 	CONSTRAINT [Certificate image is required.] CHECK(LEN(image) > 0),
 
-	CONSTRAINT [fk_certificate_lecturer] FOREIGN KEY(lecturerEmail) REFERENCES [dbo].[lecturer](email)
+	CONSTRAINT [fk_certificate_lecturer] FOREIGN KEY(lecturerId) REFERENCES [dbo].[lecturer](id)
 	ON DELETE CASCADE,
-	CONSTRAINT [pk_certificate] PRIMARY KEY(lecturerEmail, title)
+	CONSTRAINT [pk_certificate] PRIMARY KEY(lecturerId, title)
 );
 GO
 
@@ -155,7 +157,7 @@ GO
 
 CREATE TABLE [dbo].[workExperience]
 (
-	lecturerEmail VARCHAR(256) NOT NULL,
+	lecturerId INT NOT NULL,
 	topic NVARCHAR(128) NOT NULL,
 	role NVARCHAR(128) NOT NULL,
 	organizationName NVARCHAR(128) NOT NULL,
@@ -167,9 +169,9 @@ CREATE TABLE [dbo].[workExperience]
 	CONSTRAINT [Work experience organization name is required.] CHECK(LEN(organizationName) > 0),
 	CONSTRAINT [Work experience from date must be before to date.] CHECK(fromDate <= toDate),
 
-	CONSTRAINT [fk_workExperience_lecturer] FOREIGN KEY(lecturerEmail) REFERENCES [dbo].[lecturer](email)
+	CONSTRAINT [fk_workExperience_lecturer] FOREIGN KEY(lecturerId) REFERENCES [dbo].[lecturer](id)
 	ON DELETE CASCADE,
-	CONSTRAINT [pk_workExperience] PRIMARY KEY(lecturerEmail, topic)
+	CONSTRAINT [pk_workExperience] PRIMARY KEY(lecturerId, topic)
 );
 GO
 
@@ -182,13 +184,13 @@ GO
 
 CREATE TABLE [dbo].[category]
 (
-	id INT IDENTITY(1, 1) NOT NULL,
+	id SMALLINT IDENTITY(1, 1) NOT NULL,
 	title NVARCHAR(64) NOT NULL,
 	courseCount INT NOT NULL DEFAULT(0),
 	learnerCount INT NOT NULL DEFAULT(0),
 	rating FLOAT NOT NULL DEFAULT(0),
 	monthlyRevenueGenerated MONEY NOT NULL DEFAULT(0),
-	parentId INT DEFAULT(NULL),
+	parentId SMALLINT DEFAULT(NULL),
 
 	CONSTRAINT [category title is required.] CHECK(LEN(title) > 0),
 	CONSTRAINT [A category with this title already exists.] UNIQUE(title),
@@ -224,8 +226,8 @@ CREATE TABLE [dbo].[course]
 	rating FLOAT NOT NULL DEFAULT(0),
 	raterCount INT NOT NULL DEFAULT(0),
 	learnerCount INT NOT NULL DEFAULT(0),
-	lecturerCount INT NOT NULL DEFAULT(0),
-	minutesToComplete INT NOT NULL DEFAULT(0),
+	lecturerCount TINYINT NOT NULL DEFAULT(1),
+	minutesToComplete SMALLINT NOT NULL DEFAULT(0),
 	updatedAt DATE NOT NULL DEFAULT(GETDATE()),
 	monthlyRevenueGenerated MONEY NOT NULL DEFAULT(0),
 
@@ -259,7 +261,7 @@ GO
 CREATE TABLE [dbo].[courseCategory]
 (
 	courseId INT NOT NULL,
-	categoryId INT NOT NULL,
+	categoryId SMALLINT NOT NULL,
 
 	CONSTRAINT [fk_courseCategory_course] FOREIGN KEY(courseId) REFERENCES [dbo].[course](id)
 	ON DELETE CASCADE,
@@ -279,10 +281,10 @@ CREATE TABLE [dbo].[courseDescriptionDetail]
 (
 	courseId INT NOT NULL,
 	content NVARCHAR(128) NOT NULL,
-	type VARCHAR(16) NOT NULL,
+	type CHAR(1) NOT NULL,
 
 	CONSTRAINT [Course description detail type is required.]
-		CHECK(type IN ('PREREQUISITE', 'OBJECTIVE', 'SKILL', 'TARGET_USER', 'LANGUAGE')),
+		CHECK(type IN ('P', 'O', 'S', 'T', 'L')),
 	CONSTRAINT [Course description detail content is required.] CHECK(LEN(content) > 0),
 
 	CONSTRAINT [fk_courseDescriptionDetail_course] FOREIGN KEY(courseId) REFERENCES [dbo].[course](id)
@@ -299,18 +301,18 @@ GO
 
 CREATE TABLE [dbo].[ownedCourse]
 (
-	ownerEmail VARCHAR(256) NOT NULL,
+	ownerId INT NOT NULL,
 	courseId INT NOT NULL,
 	sharePercentage FLOAT NOT NULL,
 
 	CONSTRAINT [Course share percentage must be non-negative.] CHECK(sharePercentage >= 0),
 
-	CONSTRAINT [fk_ownedCourse_owner] FOREIGN KEY(ownerEmail) REFERENCES [dbo].[lecturer](email)
+	CONSTRAINT [fk_ownedCourse_owner] FOREIGN KEY(ownerId) REFERENCES [dbo].[lecturer](id)
 	ON DELETE CASCADE,
 	CONSTRAINT [fk_ownedCourse_course] FOREIGN KEY(courseId) REFERENCES [dbo].[course](id)
 	ON DELETE CASCADE,
 
-	CONSTRAINT [pk_ownedCourse] PRIMARY KEY(ownerEmail, courseId),
+	CONSTRAINT [pk_ownedCourse] PRIMARY KEY(ownerId, courseId),
 );
 GO
 
@@ -344,7 +346,7 @@ GO
 
 CREATE TABLE [dbo].[courseAnnouncement]
 (
-	senderEmail VARCHAR(256),
+	senderId INT,
 	courseId INT NOT NULL,
 	createdAt DATE NOT NULL DEFAULT GETDATE(),
 	title NVARCHAR(64) NOT NULL,
@@ -354,7 +356,7 @@ CREATE TABLE [dbo].[courseAnnouncement]
 	CONSTRAINT [Course announcement title is required.] CHECK(LEN(title) > 0),
 	CONSTRAINT [Course announcement content is required.] CHECK(LEN(content) > 0),
 
-	CONSTRAINT [fk_courseAnnouncement_sender] FOREIGN KEY(senderEmail) REFERENCES [dbo].[lecturer](email),
+	CONSTRAINT [fk_courseAnnouncement_sender] FOREIGN KEY(senderId) REFERENCES [dbo].[lecturer](id),
 	CONSTRAINT [fk_courseAnnouncement_course] FOREIGN KEY(courseId) REFERENCES [dbo].[course](id)
 	ON DELETE CASCADE,
 
@@ -369,7 +371,7 @@ GO
 
 CREATE TABLE [dbo].[courseReview]
 (
-	learnerEmail VARCHAR(256),
+	learnerId INT,
 	courseId INT NOT NULL,
 	createdAt DATETIME NOT NULL DEFAULT(GETDATE()),
 	rating TINYINT NOT NULL,
@@ -378,11 +380,11 @@ CREATE TABLE [dbo].[courseReview]
 	CONSTRAINT [Course review created at must be before today.] CHECK(createdAt <= GETDATE()),
 	CONSTRAINT [Course review rating must be between 1 and 5.] CHECK(rating BETWEEN 1 AND 5),
 
-	CONSTRAINT [fk_courseReview_learner] FOREIGN KEY(learnerEmail) REFERENCES [dbo].[learner](email),
+	CONSTRAINT [fk_courseReview_learner] FOREIGN KEY(learnerId) REFERENCES [dbo].[learner](id),
 	CONSTRAINT [fk_courseReview_course] FOREIGN KEY(courseId) REFERENCES [dbo].[course](id)
 	ON DELETE CASCADE,
 
-	CONSTRAINT [pk_courseReview] PRIMARY KEY(learnerEmail, courseId, createdAt)
+	CONSTRAINT [pk_courseReview] PRIMARY KEY(learnerId, courseId, createdAt)
 );
 GO
 
@@ -393,18 +395,18 @@ GO
 
 CREATE TABLE [dbo].[enrolledCourse]
 (
-	learnerEmail VARCHAR(256) NOT NULL,
+	learnerId INT NOT NULL,
 	courseId INT NOT NULL,
 	status CHAR(1) NOT NULL,
 
 	CONSTRAINT [Enrolled course status is required.] CHECK(status IN ('B', 'L', 'F')),
 
-	CONSTRAINT [fk_enrolledCourse_learner] FOREIGN KEY(learnerEmail) REFERENCES [dbo].[learner](email)
+	CONSTRAINT [fk_enrolledCourse_learner] FOREIGN KEY(learnerId) REFERENCES [dbo].[learner](id)
 	ON DELETE CASCADE,
 	CONSTRAINT [fk_enrolledCourse_course] FOREIGN KEY(courseId) REFERENCES [dbo].[course](id)
 	ON DELETE CASCADE,
 
-	CONSTRAINT [pk_enrolledCourse] PRIMARY KEY(learnerEmail, courseId)
+	CONSTRAINT [pk_enrolledCourse] PRIMARY KEY(learnerId, courseId)
 );
 GO
 
@@ -415,9 +417,9 @@ GO
 
 CREATE TABLE [dbo].[courseSection]
 (
-	id INT NOT NULL,
+	id SMALLINT NOT NULL,
 	courseId INT NOT NULL,
-	nextCourseSectionId INT DEFAULT(NULL),
+	nextCourseSectionId SMALLINT DEFAULT(NULL),
 	title NVARCHAR(64) NOT NULL,
 	description NVARCHAR(512) NOT NULL,
 	type CHAR(1) NOT NULL CHECK(type IN ('M', 'L', 'E')),
@@ -457,7 +459,7 @@ GO
 
 CREATE TABLE [dbo].[courseLesson]
 (
-	id INT NOT NULL,
+	id SMALLINT NOT NULL,
 	courseId INT NOT NULL,
 	isFree BIT NOT NULL DEFAULT 0,
 	durationInMinutes TINYINT NOT NULL,
@@ -483,7 +485,7 @@ GO
 
 CREATE TABLE [dbo].[courseExercise]
 (
-	id INT NOT NULL,
+	id SMALLINT NOT NULL,
 	courseId INT NOT NULL,
 	type CHAR(1) NOT NULL CHECK(type IN ('E', 'Q')),
 
@@ -519,7 +521,7 @@ GO
 
 CREATE TABLE [dbo].[courseQuiz]
 (
-	id INT NOT NULL,
+	id SMALLINT NOT NULL,
 	courseId INT NOT NULL,
 	durationInMinutes TINYINT NOT NULL,
 
@@ -544,14 +546,13 @@ GO
 
 CREATE TABLE [dbo].[courseQuizQuestion]
 (
-	id INT NOT NULL,
-	courseQuizId INT NOT NULL,
+	id TINYINT NOT NULL,
+	courseQuizId SMALLINT NOT NULL,
 	courseId INT NOT NULL,
 	question NVARCHAR(512) NOT NULL,
-	correctAnswerIndex TINYINT NOT NULL,
+	correctAnswerSymbol CHAR(1) NOT NULL,
 
 	CONSTRAINT [Course quiz question is required.] CHECK(LEN(question) > 0),
-	CONSTRAINT [Course quiz question's correct answer must be non-negative.] CHECK(correctAnswerIndex >= 0),
 
 	CONSTRAINT [fk_courseQuizQuestion_courseQuiz]
 		FOREIGN KEY(courseQuizId, courseId) REFERENCES [dbo].[courseQuiz](id, courseId)
@@ -568,8 +569,8 @@ GO
 
 CREATE TABLE [dbo].[courseQuizQuestionAnswer]
 (
-	courseQuizQuestionId INT NOT NULL,
-	courseQuizId INT NOT NULL,
+	courseQuizQuestionId TINYINT NOT NULL,
+	courseQuizId SMALLINT NOT NULL,
 	courseId INT NOT NULL,
 	symbol CHAR(1) NOT NULL,
 	answer NVARCHAR(256) NOT NULL,
@@ -577,14 +578,21 @@ CREATE TABLE [dbo].[courseQuizQuestionAnswer]
 	CONSTRAINT [Course quiz question answer symbol is required.] CHECK(LEN(symbol) = 1),
 	CONSTRAINT [Course quiz answer is required.] CHECK(LEN(answer) > 0),
 
-	CONSTRAINT [fk_courseQuizQuestionAnswer_courseQuizQuestion]
-		FOREIGN KEY(courseQuizQuestionId, courseQuizId, courseId)
-		REFERENCES [dbo].[courseQuizQuestion](id, courseQuizId, courseId)
-		ON DELETE CASCADE,
-
 	CONSTRAINT [pk_courseQuizQuestionAnswer] PRIMARY KEY(symbol, courseQuizQuestionId, courseQuizId, courseId)
 );
 GO
+
+
+ALTER TABLE [dbo].[courseQuizQuestion] ADD
+	CONSTRAINT [fk_courseQuizQuestion_courseQuizQuestionAnswer]
+		FOREIGN KEY(correctAnswerSymbol, id, courseQuizId, courseId)
+		REFERENCES [dbo].[courseQuizQuestionAnswer](symbol, courseQuizQuestionId, courseQuizId, courseId)
+
+ALTER TABLE [dbo].[courseQuizQuestionAnswer] ADD
+	CONSTRAINT [fk_courseQuizQuestionAnswer_courseQuizQuestion]
+		FOREIGN KEY(courseQuizQuestionId, courseQuizId, courseId)
+		REFERENCES [dbo].[courseQuizQuestion](id, courseQuizId, courseId)
+		ON DELETE CASCADE
 
 
 
@@ -614,7 +622,7 @@ GO
 CREATE TABLE [dbo].[courseSectionFile]
 (
 	id INT NOT NULL,
-	courseSectionId INT NOT NULL,
+	courseSectionId SMALLINT NOT NULL,
 	courseId INT NOT NULL,
 
 	CONSTRAINT [fk_courseSectionFile_file] FOREIGN KEY(id) REFERENCES [dbo].[file](id)
@@ -635,7 +643,7 @@ GO
 CREATE TABLE [dbo].[courseExerciseSolutionFile]
 (
 	id INT NOT NULL,
-	courseExerciseId INT NOT NULL,
+	courseExerciseId SMALLINT NOT NULL,
 	courseId INT NOT NULL,
 
 	CONSTRAINT [fk_courseExerciseSolutionFile_file] FOREIGN KEY(id) REFERENCES [dbo].[file](id)
@@ -657,9 +665,9 @@ GO
 
 CREATE TABLE [dbo].[courseSectionProgress]
 (
-	learnerEmail VARCHAR(256) NOT NULL,
+	learnerId INT NOT NULL,
 	courseId INT NOT NULL,
-	courseSectionId INT NOT NULL,
+	courseSectionId SMALLINT NOT NULL,
 	completionPercentage FLOAT NOT NULL DEFAULT 0,
 	type CHAR(1) NOT NULL CHECK(type IN ('S', 'E')),
 
@@ -667,12 +675,12 @@ CREATE TABLE [dbo].[courseSectionProgress]
 		CHECK(0 <= completionPercentage AND completionPercentage <= 1),
 
 	CONSTRAINT [fk_courseSectionProgress_enrolledCourse]
-		FOREIGN KEY(learnerEmail, courseId) REFERENCES [dbo].[enrolledCourse](learnerEmail, courseId)
+		FOREIGN KEY(learnerId, courseId) REFERENCES [dbo].[enrolledCourse](learnerId, courseId)
 		ON DELETE CASCADE,
 	CONSTRAINT [fk_courseSectionProgress_courseSection]
 		FOREIGN KEY(courseSectionId, courseId) REFERENCES [dbo].[courseSection](id, courseId),
 
-	CONSTRAINT [pk_courseSectionProgress] PRIMARY KEY(learnerEmail, courseId, courseSectionId)
+	CONSTRAINT [pk_courseSectionProgress] PRIMARY KEY(learnerId, courseId, courseSectionId)
 );
 GO
 
@@ -680,14 +688,14 @@ GO
 
 
 CREATE FUNCTION [dbo].[isValidSectionProgress](
-	@learnerEmail VARCHAR(256), @courseId INT, @courseSectionId INT, @type CHAR(1)
+	@learnerId INT, @courseId INT, @courseSectionId INT, @type CHAR(1)
 )
 RETURNS BIT
 AS
 BEGIN
 	IF (EXISTS(
 		SELECT * FROM [dbo].[courseSectionProgress]
-		WHERE learnerEmail = @learnerEmail AND courseId = @courseId AND courseSectionId = @courseSectionId AND type = @type
+		WHERE learnerId = @learnerId AND courseId = @courseId AND courseSectionId = @courseSectionId AND type = @type
 	))
 		RETURN 1
 
@@ -701,22 +709,22 @@ GO
 
 CREATE TABLE [dbo].[courseExerciseProgress]
 (
-	learnerEmail VARCHAR(256) NOT NULL,
+	learnerId INT NOT NULL,
 	courseId INT NOT NULL,
-	courseSectionId INT NOT NULL,
+	courseSectionId SMALLINT NOT NULL,
 	savedTextSolution NVARCHAR(MAX) NOT NULL DEFAULT '',
 	grade FLOAT,
 
 	CONSTRAINT [Course exercise progress must have a corresponding course section progress.]
-		CHECK([dbo].isValidSectionProgress(learnerEmail, courseId, courseSectionId, 'E') = 1),
+		CHECK([dbo].isValidSectionProgress(learnerId, courseId, courseSectionId, 'E') = 1),
 
 	CONSTRAINT [Course exercise grade must be between 0 and 10.] CHECK(0 <= grade AND grade <= 10),
 
-	CONSTRAINT [fk_courseExerciseProgress_courseSectionProgress] FOREIGN KEY(learnerEmail, courseId, courseSectionId)
-		REFERENCES [dbo].[courseSectionProgress](learnerEmail, courseId, courseSectionId)
+	CONSTRAINT [fk_courseExerciseProgress_courseSectionProgress] FOREIGN KEY(learnerId, courseId, courseSectionId)
+		REFERENCES [dbo].[courseSectionProgress](learnerId, courseId, courseSectionId)
 		ON DELETE CASCADE,
 
-	CONSTRAINT [pk_courseExerciseProgress] PRIMARY KEY(learnerEmail, courseId, courseSectionId)
+	CONSTRAINT [pk_courseExerciseProgress] PRIMARY KEY(learnerId, courseId, courseSectionId)
 );
 GO
 
@@ -758,16 +766,16 @@ GO
 CREATE TABLE [dbo].[privateChat]
 (
 	id INT NOT NULL CHECK([dbo].[isValidChat](id, 'P') = 1),
-	email1 VARCHAR(256) NOT NULL,
-	email2 VARCHAR(256) NOT NULL,
+	userId1 INT NOT NULL,
+	userId2 INT NOT NULL,
 
-	CONSTRAINT [The first email must be lexicographically smaller than the second email.] CHECK(email1 < email2),
-	CONSTRAINT [A private chat between these two users already exists.] UNIQUE(email1, email2),
+	CONSTRAINT [The first id must be lexicographically smaller than the second id.] CHECK(userId1 < userId2),
+	CONSTRAINT [A private chat between these two users already exists.] UNIQUE(userId1, userId2),
 
 	CONSTRAINT [fk_privateChat_chat] FOREIGN KEY(id) REFERENCES [dbo].[chat](id)
 	ON DELETE CASCADE,
-	CONSTRAINT [fk_privateChat_user1] FOREIGN KEY(email1) REFERENCES [dbo].[user](email),
-	CONSTRAINT [fk_privateChat_user2] FOREIGN KEY(email2) REFERENCES [dbo].[user](email),
+	CONSTRAINT [fk_privateChat_user1] FOREIGN KEY(userId1) REFERENCES [dbo].[user](id),
+	CONSTRAINT [fk_privateChat_user2] FOREIGN KEY(userId2) REFERENCES [dbo].[user](id),
 
 	CONSTRAINT [pk_privateChat] PRIMARY KEY(id),
 );
@@ -798,14 +806,14 @@ GO
 
 CREATE TABLE [dbo].[courseChatMember]
 (
-	userEmail VARCHAR(256) NOT NULL,
+	userId INT NOT NULL,
 	chatId INT NOT NULL,
 
-	CONSTRAINT [fk_courseChatMember_user] FOREIGN KEY(userEmail) REFERENCES [dbo].[user](email)
+	CONSTRAINT [fk_courseChatMember_user] FOREIGN KEY(userId) REFERENCES [dbo].[user](id)
 	ON DELETE CASCADE,
 	CONSTRAINT [fk_courseChatMember_chat] FOREIGN KEY(chatId) REFERENCES [dbo].[courseChat](id)
 	ON DELETE CASCADE,
-	CONSTRAINT [pk_courseChatMember] PRIMARY KEY(userEmail, chatId),
+	CONSTRAINT [pk_courseChatMember] PRIMARY KEY(userId, chatId),
 );
 GO
 
@@ -816,18 +824,18 @@ GO
 
 CREATE TABLE [dbo].[message]
 (
-	senderEmail VARCHAR(256) NOT NULL,
+	senderId INT NOT NULL,
 	chatId INT NOT NULL,
 	createdAt DATETIME NOT NULL DEFAULT GETDATE(),
 	content NVARCHAR(512) NOT NULL,
 
 	CONSTRAINT [Message content is required.] CHECK(LEN(content) > 0),
 
-	CONSTRAINT [fk_message_user] FOREIGN KEY(senderEmail) REFERENCES [dbo].[user](email)
+	CONSTRAINT [fk_message_user] FOREIGN KEY(senderId) REFERENCES [dbo].[user](id)
 	ON DELETE CASCADE,
 	CONSTRAINT [fk_message_chat] FOREIGN KEY(chatId) REFERENCES [dbo].[chat](id)
 	ON DELETE CASCADE,
-	CONSTRAINT [pk_message] PRIMARY KEY(senderEmail, chatId, createdAt),
+	CONSTRAINT [pk_message] PRIMARY KEY(senderId, chatId, createdAt),
 );
 GO
 
@@ -840,8 +848,8 @@ GO
 
 CREATE TABLE [dbo].[notification]
 (
-	senderEmail VARCHAR(256) NOT NULL,
-	receiverEmail VARCHAR(256) NOT NULL,
+	senderId INT NOT NULL,
+	receiverId INT NOT NULL,
 	createdAt DATE NOT NULL DEFAULT GETDATE(),
 	title NVARCHAR(64) NOT NULL,
 	content NVARCHAR(512) NOT NULL,
@@ -851,21 +859,36 @@ CREATE TABLE [dbo].[notification]
 	CONSTRAINT [Notification content is required.] CHECK(LEN(content) > 0),
 	CONSTRAINT [Notification expiration date must be after creation date.] CHECK(expiresAt > createdAt),
 
-	CONSTRAINT [fk_notification_sender] FOREIGN KEY(senderEmail) REFERENCES [dbo].[admin](email),
-	CONSTRAINT [fk_notification_receiver] FOREIGN KEY(receiverEmail) REFERENCES [dbo].[user](email)
+	CONSTRAINT [fk_notification_sender] FOREIGN KEY(senderId) REFERENCES [dbo].[admin](id),
+	CONSTRAINT [fk_notification_receiver] FOREIGN KEY(receiverId) REFERENCES [dbo].[user](id)
 	ON DELETE CASCADE,
-	CONSTRAINT [pk_notification] PRIMARY KEY(senderEmail, receiverEmail, createdAt),
+	CONSTRAINT [pk_notification] PRIMARY KEY(senderId, receiverId, createdAt),
 );
 GO
 
 
 
 
-CREATE FUNCTION [dbo].[isBankAccountOwnerNotAdmin](@ownerEmail VARCHAR(256))
+IF OBJECT_ID('[dbo].[region]', 'U') IS NOT NULL
+	DROP TABLE [dbo].[region]
+GO
+
+CREATE TABLE [dbo].[region]
+(
+	id INT IDENTITY(1, 1) NOT NULL,
+	name VARCHAR(64) NOT NULL,
+	CONSTRAINT [Region name is required.] CHECK(LEN(name) > 0),
+
+	CONSTRAINT [pk_region] PRIMARY KEY(id),
+);
+GO
+
+
+CREATE FUNCTION [dbo].[isBankAccountOwnerNotAdmin](@ownerId INT)
 RETURNS BIT
 AS
 BEGIN
-	IF (NOT EXISTS(SELECT email FROM [dbo].[admin] WHERE email = @ownerEmail))
+	IF (NOT EXISTS(SELECT id FROM [dbo].[admin] WHERE id = @ownerId))
 		RETURN 1
 
 	RETURN 0
@@ -878,17 +901,17 @@ GO
 
 CREATE TABLE [dbo].[bankAccount]
 (
-	ownerEmail VARCHAR(256) NOT NULL,
+	ownerId INT NOT NULL,
 	accountNumber VARCHAR(16) NOT NULL,
 	goodThru DATE NOT NULL,
 	cvc VARCHAR(3) NOT NULL,
 	cardholderName VARCHAR(128) NOT NULL,
-	region VARCHAR(64),
-	zip VARCHAR(16) NOT NULL,
+	regionId INT NOT NULL,
+	zip VARCHAR(8) NOT NULL,
 	inAppBalance MONEY NOT NULL DEFAULT 0,
 
 	CONSTRAINT [Bank account owner cannot be an admin.] CHECK(
-		[dbo].[isBankAccountOwnerNotAdmin](ownerEmail) = 1
+		[dbo].[isBankAccountOwnerNotAdmin](ownerId) = 1
 	),
 	CONSTRAINT [Bank account number must be 16 digits long.] CHECK(LEN(accountNumber) = 16),
 	CONSTRAINT [Bank account good thru date must be after today.] CHECK(goodThru > GETDATE()),
@@ -897,10 +920,12 @@ CREATE TABLE [dbo].[bankAccount]
 	CONSTRAINT [Bank account zip code is required.] CHECK(LEN(zip) > 0),
 	CONSTRAINT [Bank account balance must be non-negative.] CHECK(inAppBalance >= 0),
 
-	CONSTRAINT [fk_bankAccount_user] FOREIGN KEY(ownerEmail) REFERENCES [dbo].[user](email)
+	CONSTRAINT [fk_bankAccount_user] FOREIGN KEY(ownerId) REFERENCES [dbo].[user](id)
 	ON DELETE CASCADE,
 
-	CONSTRAINT [pk_bankAccount] PRIMARY KEY(ownerEmail, accountNumber),
+	CONSTRAINT [fk_bankAccount_region] FOREIGN KEY(regionId) REFERENCES [dbo].[region](id),
+
+	CONSTRAINT [pk_bankAccount] PRIMARY KEY(ownerId, accountNumber),
 );
 GO
 
@@ -911,7 +936,7 @@ GO
 
 CREATE TABLE [dbo].[coupon]
 (
-	id INT IDENTITY(1, 1) NOT NULL,
+	id SMALLINT IDENTITY(1, 1) NOT NULL,
 	code VARCHAR(16) NOT NULL,
 	spawnPercentage FLOAT NOT NULL,
 	discountPercentage FLOAT NOT NULL,
@@ -934,18 +959,18 @@ GO
 
 CREATE TABLE [dbo].[ownedCoupon]
 (
-	ownerEmail VARCHAR(256) NOT NULL,
-	couponId INT NOT NULL,
+	ownerId INT NOT NULL,
+	couponId SMALLINT NOT NULL,
 	expirationDate DATE NOT NULL,
 
 	CONSTRAINT [Coupon expiration date must be after today.] CHECK(expirationDate > GETDATE()),
 
-	CONSTRAINT [fk_ownedCoupon_owner] FOREIGN KEY(ownerEmail) REFERENCES [dbo].[learner](email)
+	CONSTRAINT [fk_ownedCoupon_owner] FOREIGN KEY(ownerId) REFERENCES [dbo].[learner](id)
 	ON DELETE CASCADE,
 	CONSTRAINT [fk_ownedCoupon_coupon] FOREIGN KEY(couponId) REFERENCES [dbo].[coupon](id)
 	ON DELETE CASCADE,
 
-	CONSTRAINT [pk_ownedCoupon] PRIMARY KEY(ownerEmail, couponId),
+	CONSTRAINT [pk_ownedCoupon] PRIMARY KEY(ownerId, couponId),
 );
 GO
 
@@ -956,8 +981,8 @@ GO
 
 CREATE TABLE [dbo].[transaction]
 (
-	initiatorEmail VARCHAR(256),
-	receiverEmail VARCHAR(256),
+	initiatorId INT,
+	receiverId INT,
 	courseId INT,
 	createdAt DATETIME NOT NULL DEFAULT GETDATE(),
 	paidAmount MONEY NOT NULL,
@@ -969,7 +994,7 @@ CREATE TABLE [dbo].[transaction]
 	revenue MONEY NOT NULL,
 
 	CONSTRAINT [Transaction details cannot be all empty.]
-		CHECK(initiatorEmail IS NOT NULL OR receiverEmail IS NOT NULL OR courseId IS NOT NULL),
+		CHECK(initiatorId IS NOT NULL OR receiverId IS NOT NULL OR courseId IS NOT NULL),
 	CONSTRAINT [Transaction creation date must be before today.] CHECK(createdAt <= GETDATE()),
 	CONSTRAINT [Transaction tax percentage must be between 0 and 1.] CHECK(0 <= taxPercentage AND taxPercentage <= 1),
 	CONSTRAINT [Transaction fee must be non-negative.] CHECK(transactionFee >= 0),
@@ -978,10 +1003,10 @@ CREATE TABLE [dbo].[transaction]
 	CONSTRAINT [Transaction net amount must be non-negative.] CHECK(netAmount >= 0),
 	CONSTRAINT [Transaction revenue must be non-negative.] CHECK(revenue >= 0),
 
-	CONSTRAINT [fk_transaction_initiator] FOREIGN KEY(initiatorEmail) REFERENCES [dbo].[learner](email),
-	CONSTRAINT [fk_transaction_receiver] FOREIGN KEY(receiverEmail) REFERENCES [dbo].[lecturer](email),
+	CONSTRAINT [fk_transaction_initiator] FOREIGN KEY(initiatorId) REFERENCES [dbo].[learner](id),
+	CONSTRAINT [fk_transaction_receiver] FOREIGN KEY(receiverId) REFERENCES [dbo].[lecturer](id),
 	CONSTRAINT [fk_transaction_course] FOREIGN KEY(courseId) REFERENCES [dbo].[course](id),
 
-	CONSTRAINT [pk_transaction] PRIMARY KEY(initiatorEmail, receiverEmail, courseId, createdAt)
+	CONSTRAINT [pk_transaction] PRIMARY KEY(initiatorId, receiverId, courseId, createdAt)
 );
 GO
