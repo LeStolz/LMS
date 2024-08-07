@@ -22,7 +22,7 @@ export async function createCourse({
       await (await db())
         .input("title", title)
         .input("subtitle", subtitle)
-        .input("ownerEmail", user.email)
+        .input("ownerId", user.id)
         .execute("insertCourse")
     ).recordset?.[0];
 

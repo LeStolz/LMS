@@ -21,17 +21,17 @@ export async function decrypt(input: string) {
     algorithms: ["HS256"],
   });
 
-  return payload as { email: string; expires: Date };
+  return payload as { id: number; expires: Date };
 }
 
 export async function signOut() {
   cookies().delete("session");
 }
 
-export async function getSessionEmail() {
+export async function getSessionId() {
   const session = cookies().get("session")?.value;
 
-  return session ? (await decrypt(session)).email : null;
+  return session ? (await decrypt(session)).id : null;
 }
 
 export async function updateSession(request: NextRequest) {

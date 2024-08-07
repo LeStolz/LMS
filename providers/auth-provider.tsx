@@ -40,7 +40,7 @@ export function useAuth() {
     }
   };
 
-  const signUpWrapper = async (user: UserWithPassword) => {
+  const signUpWrapper = async (user: Omit<UserWithPassword, "id">) => {
     try {
       await signUpMutation.mutateAsync(user);
 

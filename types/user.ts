@@ -1,4 +1,5 @@
 export type User = {
+  id: number;
   email: string;
   name: string;
   type: "AD" | "LN" | "LT";
@@ -14,7 +15,7 @@ export type BankAccount = {
   cvc: string;
   cardholderName: string;
   zip: string;
-  ownerEmail: string;
+  ownerId: number;
 };
 
 export type UserWithBankAccount = User & BankAccount;
@@ -54,7 +55,7 @@ export type UserWithDetails = UserWithPassword & {
   cvc?: string;
   cardholderName?: string;
   zip?: string;
-  ownerEmail?: string;
+  ownerId?: number;
 
   dob?: Date;
   gender?: "M" | "F";

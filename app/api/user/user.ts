@@ -1,18 +1,18 @@
 "use server";
 
 import { User, UserWithDetails, UserWithPassword } from "@/types/user";
-import { encrypt, getSessionEmail } from "../auth/auth";
+import { encrypt, getSessionId } from "../auth/auth";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 
 const expiresDuration = parseInt(process.env.JWT_EXPIRES_IN_SECONDS!);
 
 export async function getSession(withDetails = false) {
-  const sessionEmail = await getSessionEmail();
+  const sessionId = await getSessionId();
 
-  console.log(sessionEmail);
+  console.log(sessionId);
 
-  return sessionEmail ? await getUser(sessionEmail, withDetails) : null;
+  return sessionId ? await getUser(sessionId, withDetails) : null;
 }
 
 export async function authorize(
@@ -28,14 +28,14 @@ export async function authorize(
   return session;
 }
 
-async function setCredentialCookie(email: string) {
+async function setCredentialCookie(id: number) {
   const expires = new Date(Date.now() + expiresDuration);
-  const session = await encrypt({ email: email, expires });
+  const session = await encrypt({ id: id, expires });
 
   cookies().set("session", session, { expires, httpOnly: true });
 }
 
-export async function getUser(email: string, withDetails = false) {
+export async function getUser(id: number, withDetails = false) {
   try {
     let user:
       | (UserWithDetails & {
@@ -45,7 +45,7 @@ export async function getUser(email: string, withDetails = false) {
       | null =
       (
         await (await db())
-          .input("email", email)
+          .input("id", id)
           .input("withDetails", withDetails)
           .execute("selectUser")
       ).recordset?.[0] ?? null;
@@ -64,22 +64,20 @@ export async function getUser(email: string, withDetails = false) {
   }
 }
 
-export async function demandLecturerVerification({ email }: { email: string }) {
+export async function demandLecturerVerification({ id }: { id: number }) {
   try {
-    await (await db())
-      .input("email", email)
-      .execute("demandLecturerVerification");
+    await (await db()).input("id", id).execute("demandLecturerVerification");
   } catch (error) {
     throw error;
   }
 }
 
 export async function updateUser(
-  user: UserWithDetails & { oldPassword: string }
+  user: Omit<UserWithDetails, "email"> & { oldPassword: string }
 ) {
   try {
     await (await db())
-      .input("email", user.email)
+      .input("id", user.id)
       .input("oldPassword", user.oldPassword)
       .input("password", user.password)
       .input("name", user.name)
@@ -89,15 +87,14 @@ export async function updateUser(
       await (
         await db()
       )
-        .input("email", user.email)
-        .input("oldPassword", user.password)
-        .input("name", user.name)
+        .input("id", user.id)
         .input("type", user.type)
         .input("accountNumber", user.accountNumber ?? "")
         .input("goodThru", user.goodThru ?? "")
         .input("cvc", user.cvc ?? "")
         .input("cardholderName", user.cardholderName ?? "")
         .input("zip", user.zip ?? "")
+        .input("regionId", user.regionId ?? "")
         .execute("updateUserAndBankAccount");
     }
 
@@ -105,15 +102,7 @@ export async function updateUser(
       await (
         await db()
       )
-        .input("email", user.email)
-        .input("oldPassword", user.password)
-        .input("name", user.name)
-        .input("type", user.type)
-        .input("accountNumber", user.accountNumber ?? "")
-        .input("goodThru", user.goodThru ?? "")
-        .input("cvc", user.cvc ?? "")
-        .input("cardholderName", user.cardholderName ?? "")
-        .input("zip", user.zip ?? "")
+        .input("id", user.id)
         .input("dob", user.dob ?? "")
         .input("gender", user.gender ?? "")
         .input("homeAddress", user.homeAddress ?? "")
@@ -156,7 +145,7 @@ export async function signIn({
       throw new Error("Invalid email or password.");
     }
 
-    setCredentialCookie(email);
+    setCredentialCookie(user.id);
 
     return user;
   } catch (error) {
@@ -164,20 +153,22 @@ export async function signIn({
   }
 }
 
-export async function signUp(user: UserWithPassword) {
+export async function signUp(user: Omit<UserWithPassword, "id">) {
   await authorize([null]);
 
   try {
-    await (await db())
-      .input("email", user.email)
-      .input("password", user.password)
-      .input("name", user.name)
-      .input("type", user.type)
-      .execute("insertUser");
+    const result: User = (
+      await (await db())
+        .input("email", user.email)
+        .input("password", user.password)
+        .input("name", user.name)
+        .input("type", user.type)
+        .execute("insertUser")
+    ).recordset?.[0];
 
-    setCredentialCookie(user.email);
+    setCredentialCookie(result.id);
 
-    return user;
+    return result;
   } catch (error) {
     throw error;
   }

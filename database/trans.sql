@@ -9,29 +9,29 @@ GO
 
 -- Create the procedures
 CREATE OR ALTER PROCEDURE [dbo].[selectUser]
-	@email VARCHAR(256),
+	@id INT,
 	@withDetails BIT
 AS
 BEGIN TRANSACTION
 	SET XACT_ABORT ON
 	SET NOCOUNT ON
 
-	DECLARE @type CHAR(2) = (SELECT type FROM [dbo].[user] WHERE email = @email)
+	DECLARE @type CHAR(2) = (SELECT type FROM [dbo].[user] WHERE id = @id)
 
 	IF @withDetails = 0 OR (@type) = 'AD'
 	BEGIN;
-		SELECT email, name, type FROM [dbo].[user] WHERE email = @email
+		SELECT id, email, name, type FROM [dbo].[user] WHERE id = @id
 	END
 	ELSE IF (@type) = 'LN'
 	BEGIN;
-		SELECT u.email, u.name, u.type, b.* FROM [dbo].[user] u
-		LEFT JOIN [dbo].[bankAccount] b ON u.email = b.ownerEmail
-		WHERE email = @email
+		SELECT u.id, u.email, u.name, u.type, b.* FROM [dbo].[user] u
+		LEFT JOIN [dbo].[bankAccount] b ON u.Id = b.ownerId
+		WHERE Id = @Id
 	END
 	ELSE
 	BEGIN;
 		SELECT
-			u.email, u.name, u.type,
+			u.id, u.email, u.name, u.type,
 			l.dob, l.gender, l.homeAddress, l.workAddress,
 			l.nationality, l.phone, l.introduction, l.annualIncome,
 			l.academicRank, l.academicDegree, l.profileImage,
@@ -39,18 +39,18 @@ BEGIN TRANSACTION
 			b.*,
 			(
 				SELECT title, image FROM [dbo].[certificate]
-				WHERE lecturerEmail = u.email
+				WHERE lecturerId = u.Id
 				FOR JSON PATH, INCLUDE_NULL_VALUES
 			) AS certificates,
 			(
 				SELECT * FROM [dbo].[workExperience]
-				WHERE lecturerEmail = u.email
+				WHERE lecturerId = u.Id
 				FOR JSON PATH, INCLUDE_NULL_VALUES
 			) AS workExperiences
 		FROM [dbo].[user] u
-		LEFT JOIN [dbo].[bankAccount] b ON u.email = b.ownerEmail
-		LEFT JOIN [dbo].[lecturer] l ON u.email = l.email
-		WHERE u.email = @email
+		LEFT JOIN [dbo].[bankAccount] b ON u.Id = b.ownerId
+		LEFT JOIN [dbo].[lecturer] l ON u.Id = l.Id
+		WHERE u.Id = @Id
 	END
 COMMIT TRANSACTION
 GO
@@ -93,15 +93,17 @@ BEGIN TRANSACTION
 	INSERT INTO [dbo].[user]
 	VALUES(@email, @password, @name, @type)
 
+	DECLARE @id INT = (SELECT SCOPE_IDENTITY())
+
 	IF @type = 'LN'
 	BEGIN;
 		INSERT INTO [dbo].[learner]
-		VALUES(@email)
+		VALUES(@id)
 	END
 
 	SELECT *
 	FROM [dbo].[user]
-	WHERE email = @email AND password = @password
+	WHERE id = @id
 COMMIT TRANSACTION
 GO
 
@@ -109,7 +111,7 @@ GO
 
 
 CREATE OR ALTER PROCEDURE [dbo].[updateUser]
-	@email VARCHAR(256),
+	@id INT,
 	@oldPassword VARCHAR(128),
 	@password VARCHAR(128),
 	@name NVARCHAR(128)
@@ -118,14 +120,14 @@ BEGIN TRANSACTION
 	SET XACT_ABORT ON
 	SET NOCOUNT ON
 
-	IF @oldPassword <> (SELECT password FROM [dbo].[user] WHERE email = @email)
+	IF @oldPassword <> (SELECT password FROM [dbo].[user] WHERE id = @id)
 	BEGIN;
 		THROW 51000, 'Incorrect password.', 1;
 	END
 
 	UPDATE [dbo].[user]
 	SET password = @password, name = @name
-	WHERE email = @email
+	WHERE id = @id
 COMMIT TRANSACTION
 GO
 
@@ -133,15 +135,14 @@ GO
 
 
 CREATE OR ALTER PROCEDURE [dbo].[updateUserAndBankAccount]
-	@email VARCHAR(256),
-	@oldPassword VARCHAR(128),
-	@name NVARCHAR(128),
+	@id INT,
 	@type CHAR(2),
 	@accountNumber VARCHAR(16),
 	@goodThru DATE,
 	@cvc VARCHAR(3),
 	@cardholderName VARCHAR(128),
-	@zip VARCHAR(16)
+	@zip VARCHAR(16),
+	@regionId INT
 AS
 BEGIN TRANSACTION
 	SET XACT_ABORT ON
@@ -152,15 +153,10 @@ BEGIN TRANSACTION
 		THROW 51000, 'Admin bank accounts cannot be updated.', 1;
 	END
 
-	IF @oldPassword <> (SELECT password FROM [dbo].[user] WHERE email = @email)
+	IF NOT EXISTS(SELECT * FROM [dbo].[bankAccount] WHERE ownerId = @id)
 	BEGIN;
-		THROW 51000, 'Incorrect password.', 1;
-	END
-
-	IF NOT EXISTS(SELECT * FROM [dbo].[bankAccount] WHERE ownerEmail = @email)
-	BEGIN;
-		INSERT INTO [dbo].[bankAccount](accountNumber, goodThru, cvc, cardholderName, zip, ownerEmail)
-		VALUES(@accountNumber, @goodThru, @cvc, @cardholderName, @zip, @email)
+		INSERT INTO [dbo].[bankAccount](accountNumber, goodThru, cvc, cardholderName, zip, ownerId, regionId)
+		VALUES(@accountNumber, @goodThru, @cvc, @cardholderName, @zip, @id, @regionId)
 	END
 	ELSE
 	BEGIN;
@@ -170,8 +166,9 @@ BEGIN TRANSACTION
 			goodThru = @goodThru,
 			cvc = @cvc,
 			cardholderName = @cardholderName,
-			zip = @zip
-		WHERE ownerEmail = @email
+			zip = @zip,
+			regionId = @regionId
+		WHERE ownerId = @id
 	END
 COMMIT TRANSACTION
 GO
@@ -180,15 +177,7 @@ GO
 
 
 CREATE OR ALTER PROCEDURE [dbo].[updateLecturer]
-	@email VARCHAR(256),
-	@oldPassword VARCHAR(128),
-	@name NVARCHAR(128),
-	@type CHAR(2),
-	@accountNumber VARCHAR(16),
-	@goodThru DATE,
-	@cvc VARCHAR(3),
-	@cardholderName VARCHAR(128),
-	@zip VARCHAR(16),
+	@id INT,
 	@dob DATE,
 	@gender CHAR(1),
 	@homeAddress NVARCHAR(256),
@@ -207,11 +196,11 @@ BEGIN TRANSACTION
 	SET XACT_ABORT ON
 	SET NOCOUNT ON
 
-	IF NOT EXISTS(SELECT * FROM [dbo].[lecturer] WHERE email = @email)
+	IF NOT EXISTS(SELECT * FROM [dbo].[lecturer] WHERE id = @id)
 	BEGIN;
 		INSERT INTO [dbo].[lecturer]
 		VALUES(
-			@email, @dob, @gender, @homeAddress, @workAddress, @nationality, @phone, @introduction,
+			@id, @dob, @gender, @homeAddress, @workAddress, @nationality, @phone, @introduction,
 			@annualIncome, @academicRank, @academicDegree, @profileImage, 'R', GETDATE()
 		)
 	END
@@ -230,7 +219,7 @@ BEGIN TRANSACTION
 			academicRank = @academicRank,
 			academicDegree = @academicDegree,
 			profileImage = @profileImage
-		WHERE email = @email
+		WHERE id = @id
 	END
 
   	CREATE TABLE #certificates (title NVARCHAR(128), image NVARCHAR(256))
@@ -244,10 +233,10 @@ BEGIN TRANSACTION
 	)
 
 	DELETE FROM [dbo].[certificate]
-	WHERE lecturerEmail = @email
+	WHERE lecturerId = @id
 
 	INSERT INTO [dbo].[certificate]
-	SELECT @email, title, image
+	SELECT @id, title, image
 	FROM #certificates
 
 	DROP TABLE #certificates
@@ -272,10 +261,10 @@ BEGIN TRANSACTION
 	)
 
 	DELETE FROM [dbo].[workExperience]
-	WHERE lecturerEmail = @email
+	WHERE lecturerId = @id
 
 	INSERT INTO [dbo].[workExperience]
-	SELECT @email, topic, role, organizationName, fromDate, toDate
+	SELECT @id, topic, role, organizationName, fromDate, toDate
 	FROM #workExperiences
 
 	DROP TABLE #workExperiences
@@ -286,15 +275,17 @@ GO
 
 
 CREATE OR ALTER PROCEDURE [dbo].[demandLecturerVerification]
-	@email VARCHAR(256)
+	@id INT
 AS
 BEGIN TRANSACTION
 	SET XACT_ABORT ON
 	SET NOCOUNT ON
 
 	UPDATE [dbo].[lecturer]
-	SET status = 'P'
-	WHERE email = @email
+	SET
+		status = 'P',
+		demandVerificationDate = GETDATE()
+	WHERE id = @id
 
 	IF @@ROWCOUNT = 0
 	BEGIN;
@@ -309,22 +300,27 @@ GO
 CREATE OR ALTER PROCEDURE [dbo].[insertCourse]
 	@title NVARCHAR(64),
 	@subtitle NVARCHAR(128),
-	@ownerEmail VARCHAR(256)
+	@ownerId INT
 AS
 BEGIN TRANSACTION
 	SET XACT_ABORT ON
 	SET NOCOUNT ON
 
-	IF @title IS NULL OR @subtitle IS NULL OR @ownerEmail IS NULL
+	IF @title IS NULL OR @subtitle IS NULL OR @ownerId IS NULL
 	BEGIN;
-		THROW 51000, 'Title, subtitle, and owner email are required.', 1;
+		THROW 51000, 'Title, subtitle, and owner id are required.', 1;
+	END
+
+	IF (SELECT status FROM [dbo].[lecturer] WHERE id = @ownerId) <> 'V'
+	BEGIN;
+		THROW 51000, 'Lecturer is not verified.', 1;
 	END
 
 	INSERT INTO [dbo].[course](title, subtitle, status)
 	VALUES(@title, @subtitle, 'C')
 
 	DECLARE @courseId INT = SCOPE_IDENTITY()
-	-- INSERT INTO [dbo].[ownedCourse] VALUES (@ownerEmail, @courseId, 1)
+	INSERT INTO [dbo].[ownedCourse] VALUES (@ownerId, @courseId, 1)
 
 	SELECT *
 	FROM [dbo].[course]
@@ -426,8 +422,6 @@ BEGIN TRANSACTION
 	advertisementVideo = COALESCE(@advertisementVideo, advertisementVideo),
 	updatedAt = @updatedAt
 	WHERE id = @id
-
-	-- INSERT INTO [dbo].[ownedCourse] VALUES (@ownerEmail, @courseId, 1)
 
 	EXEC [dbo].[updateCourseCategories] @id, @categoryIds
 

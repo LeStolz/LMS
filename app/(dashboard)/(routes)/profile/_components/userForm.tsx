@@ -187,7 +187,7 @@ export default function Component({ user }: { user: UserWithDetails }) {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       await updateUser({
-        email: user.email,
+        id: user.id,
         type: user.type,
         ...values,
         password:
@@ -213,7 +213,7 @@ export default function Component({ user }: { user: UserWithDetails }) {
   async function onVerify() {
     try {
       await demandLecturerVerification({
-        email: user.email,
+        id: user.id,
       });
 
       toast.success("Verification demanded!");

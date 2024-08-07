@@ -4,13 +4,13 @@ import { authorize } from "../user/user";
 const f = createUploadthing();
 
 const auth = async () => {
-  const userEmail = await authorize(["LT"]);
+  const userId = await authorize(["LT"]);
 
-  if (!userEmail) {
+  if (!userId) {
     throw new Error("Unauthorized.");
   }
 
-  return userEmail;
+  return userId;
 };
 
 export const ourFileRouter = {

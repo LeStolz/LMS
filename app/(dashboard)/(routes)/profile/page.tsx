@@ -5,7 +5,13 @@ import { Loader2 } from "lucide-react";
 import UserForm from "./_components/userForm";
 
 export default async function Component() {
-  const user = await authorize(["LN", "LT", "AD"], true);
+  let user;
+
+  try {
+    user = await authorize(["LN", "LT", "AD"], true);
+  } catch {
+    return redirect("/");
+  }
 
   if (!user) {
     return redirect("/");
