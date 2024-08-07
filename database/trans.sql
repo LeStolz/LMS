@@ -447,3 +447,138 @@ BEGIN TRANSACTION
 	ORDER BY title
 COMMIT TRANSACTION
 GO
+
+
+
+
+CREATE OR ALTER PROCEDURE [dbo].[searchRegions]
+	@name VARCHAR(64)
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	SELECT TOP 20 *
+	FROM [dbo].[region]
+	WHERE name LIKE @name + '%'
+	ORDER BY name
+COMMIT TRANSACTION
+GO
+
+
+
+
+CREATE OR ALTER PROCEDURE [dbo].[searchLecturer]
+	@name NVARCHAR(128),
+	@status CHAR(1),
+	@offset INT
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	SELECT * FROM [dbo].[lecturer] l
+	JOIN [dbo].[user] u ON l.id = u.id
+	WHERE name LIKE @name + '%' AND (@status IS NULL OR status = @status)
+	ORDER BY l.demandVerificationDate
+	OFFSET @offset ROWS
+	FETCH NEXT 40 ROWS ONLY
+COMMIT TRANSACTION
+GO
+
+
+
+
+CREATE OR ALTER PROCEDURE [dbo].[verifyLecturer]
+	@id INT,
+	@status CHAR(1),
+	@verifierId INT,
+	@notificationTitle NVARCHAR(64),
+	@notificationContent NVARCHAR(512)
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	IF (NOT EXISTS (SELECT * FROM [dbo].[bankAccount] WHERE ownerId = @id))
+	BEGIN;
+		THROW 51000, 'Please fill in your bank account information.', 1;
+	END
+
+	UPDATE [dbo].[lecturer]
+	SET status = @status
+	WHERE id = @id
+
+	IF @@ROWCOUNT = 0
+	BEGIN;
+		THROW 51000, 'Please fill in your lecturer information.', 1;
+	END
+
+	INSERT INTO [dbo].[notification](senderId, receiverId, title, content)
+	VALUES(@verifierId, @id, @notificationTitle, @notificationContent)
+COMMIT TRANSACTION
+GO
+
+
+
+
+CREATE OR ALTER PROCEDURE [dbo].[enrollInCourse]
+	@learnerId INT,
+	@courseId INT,
+	@couponId INT
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	IF (NOT EXISTS (SELECT * FROM [dbo].[bankAccount] WHERE ownerId = @learnerId))
+	BEGIN;
+		THROW 51000, 'Please fill in your bank account information.', 1;
+	END
+
+	INSERT INTO [dbo].[enrolledCourse](learnerId, courseId)
+	VALUES(@learnerId, @courseId)
+
+	DECLARE @paidAmount MONEY = (SELECT price FROM [dbo].[course] WHERE id = @courseId)
+
+	DECLARE @discountPercentage FLOAT = COALESCE(
+		(SELECT discountPercentage
+		FROM [dbo].[ownedCoupon] oc
+		JOIN [dbo].[coupon] c ON oc.couponId = c.id
+		WHERE oc.couponId = @couponId AND oc.ownerId = @learnerId AND oc.expirationDate >= GETDATE()),
+		0
+	)
+	DELETE FROM [dbo].[ownedCoupon] WHERE couponId = @couponId AND ownerId = @learnerId
+
+	INSERT INTO [dbo].[transaction]
+	(initiatorId, receiverId, courseId, paidAmount, taxPercentage, transactionFee, sharePercentage, discountPercentage)
+	SELECT @learnerId, ownerId, @courseId, @paidAmount, 0.1, 10, sharePercentage, @discountPercentage
+	FROM [dbo].[ownedCourse]
+	WHERE courseId = @courseId
+
+	-- HERE
+COMMIT TRANSACTION
+GO
+
+
+
+
+CREATE OR ALTER PROCEDURE [dbo].[reviewCourse]
+	@learnerId INT,
+	@courseId INT,
+	@rating TINYINT,
+	@content NVARCHAR(512)
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	IF NOT EXISTS(SELECT * FROM [dbo].[enrolledCourse] WHERE learnerId = @learnerId AND courseId = @courseId)
+	BEGIN;
+		THROW 51000, 'Learner is not enrolled in the course.', 1;
+	END
+
+	INSERT INTO [dbo].[courseReview](learnerId, courseId, rating, content)
+	VALUES(@learnerId, @courseId, @rating, @content)
+COMMIT TRANSACTION
+GO

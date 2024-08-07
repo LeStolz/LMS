@@ -1010,10 +1010,10 @@ CREATE TABLE [dbo].[notification]
 (
 	senderId INT NOT NULL,
 	receiverId INT NOT NULL,
-	createdAt DATE NOT NULL DEFAULT GETDATE(),
+	createdAt DATETIME NOT NULL DEFAULT GETDATE(),
 	title NVARCHAR(64) NOT NULL,
 	content NVARCHAR(512) NOT NULL,
-	expiresAt DATE NOT NULL DEFAULT GETDATE() + 4 * 7,
+	expiresAt DATETIME NOT NULL DEFAULT GETDATE() + 4 * 7,
 
 	CONSTRAINT [Notification title is required.] CHECK(LEN(title) > 0),
 	CONSTRAINT [Notification content is required.] CHECK(LEN(content) > 0),
