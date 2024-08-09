@@ -554,20 +554,17 @@ CREATE TABLE [dbo].[courseSection]
 (
 	id SMALLINT NOT NULL,
 	courseId INT NOT NULL,
-	nextCourseSectionId SMALLINT DEFAULT(NULL),
+	pos SMALLINT NOT NULL,
 	title NVARCHAR(64) NOT NULL,
 	description NVARCHAR(512) NOT NULL,
 	type CHAR(1) NOT NULL CHECK(type IN ('M', 'L', 'E')),
 
-	CONSTRAINT [Another course section already has the same next section id.] UNIQUE(nextCourseSectionId, courseId),
-	CONSTRAINT [A course section cannot be its own next section.] CHECK(nextCourseSectionId <> id),
+	CONSTRAINT [A course section pos must be unique.] UNIQUE(pos, courseId),
 	CONSTRAINT [Course section title is required.] CHECK(LEN(title) > 0),
 	CONSTRAINT [Course section description is required.] CHECK(LEN(description) > 0),
 
 	CONSTRAINT [fk_courseSection_course] FOREIGN KEY(courseId) REFERENCES [dbo].[course](id)
 	ON DELETE CASCADE,
-	CONSTRAINT [fk_courseSection_nextSection]
-		FOREIGN KEY(nextCourseSectionId, courseId) REFERENCES [dbo].[courseSection](id, courseId),
 
 	CONSTRAINT [pk_courseSection] PRIMARY KEY(id, courseId)
 );
@@ -1010,10 +1007,10 @@ CREATE TABLE [dbo].[notification]
 (
 	senderId INT NOT NULL,
 	receiverId INT NOT NULL,
-	createdAt DATE NOT NULL DEFAULT GETDATE(),
+	createdAt DATETIME NOT NULL DEFAULT GETDATE(),
 	title NVARCHAR(64) NOT NULL,
 	content NVARCHAR(512) NOT NULL,
-	expiresAt DATE NOT NULL DEFAULT GETDATE() + 4 * 7,
+	expiresAt DATETIME NOT NULL DEFAULT GETDATE() + 4 * 7,
 
 	CONSTRAINT [Notification title is required.] CHECK(LEN(title) > 0),
 	CONSTRAINT [Notification content is required.] CHECK(LEN(content) > 0),
