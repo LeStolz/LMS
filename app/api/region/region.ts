@@ -16,3 +16,15 @@ export async function searchRegion({ name }: { name: string }) {
     throw error;
   }
 }
+
+export async function getRegion({ id }: { id: number | string | undefined }) { 
+  try {
+    let region = (
+      await (await db()).input("id", id).execute("searchRegionById")
+    ).recordset?.[0];
+
+    return region as string | undefined | number;
+  } catch (error) {
+    throw error;
+  }
+} 

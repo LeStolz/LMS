@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DataTableRowActions } from "./data-table-row-actions";
 
 // This type is used to define the shape of our data.
 // You can use a Zod schema here if you want.
@@ -194,29 +195,8 @@ export const columns: ColumnDef<Course>[] = [
   {
     accessorKey: "Actions",
     cell: ({ row }) => {
-      const { id } = row.original;
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-4 w-8 p-0">
-              <span className="sr-only">Actions</span>
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <Link href={`/courses/${id}`}>
-              <DropdownMenuItem>
-                <DropdownMenuLabel>Edit</DropdownMenuLabel>
-                <Pencil className="h-4 w-4 mr-2" />
-              </DropdownMenuItem>
-            </Link>
-
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <DropdownMenuLabel>Delete</DropdownMenuLabel>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <DataTableRowActions row={row} />
       );
     },
   },

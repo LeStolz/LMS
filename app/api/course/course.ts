@@ -180,3 +180,27 @@ export async function updateCourse({
     throw error;
   }
 }
+
+export async function deleteCourse({
+  id,
+}: {
+  id: number;
+}) {
+  const user = await authorize(["LT"]);
+
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
+
+  try {
+    const course: Course = (
+      await (await db())
+        .input("id", id)
+        .execute("deleteCourse")
+    ).recordset?.[0];
+
+    return course;
+  } catch (error) {
+    throw error;
+  }
+}

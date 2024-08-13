@@ -14,15 +14,23 @@ export default async function Component({
 
   const course = await getCourseOwner({
     id: parseInt(params.courseId),
-    });
+  });
 
   if (!course) {
     return redirect("/courses");
   }
+  const requestFields = Object.values(course);
+  const totalFields = requestFields.length;
+  const completedFields = requestFields.filter((field) => field).length;
+  const progress = Math.round((completedFields / totalFields) * 100);
+  const completeFields = `${completedFields}/${totalFields}`;
 
   return (
     <div className="container px-0 max-w-2xl">
-      <h1 className="text-2xl font-bold pb-4">Update course</h1>
+      <div className="flex flex-col gap-y-2">
+        <h1 className="text-2xl font-bold pb-4">Update course</h1>
+        <span className="text-sm text-slate-300">Complete all fields {completeFields}</span>
+      </div>
       <Suspense fallback={<Loader2 className="animate-spin" />}>
         <CourseForm course={course} />
       </Suspense>

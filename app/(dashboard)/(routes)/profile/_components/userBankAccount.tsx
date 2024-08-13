@@ -15,49 +15,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import React from "react";
 import { useFormContext } from "react-hook-form";
-
+import { searchRegion } from "@/app/api/region/region";
+import { toast } from "sonner";
 export default function CourseGeneral() {
-  const [countryIds, setCountryIds] = useState(["US", "CA", "MX"]);
-  const [userId, setUserId] = useState<number | null>(null);
   const form = useFormContext();
 
-  async function fetchAllCountryIds(): Promise<string[]> {
-    try {
-      const response = await fetch("https://restcountries.com/v3.1/all");
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const countries = await response.json();
-      const ids = countries.map((country: { cca2: string }) => country.cca2);
-      return ids;
-    } catch (error) {
-      console.error("Error fetching country IDs:", error);
-      return [];
-    }
-  }
-
-  useEffect(() => {
-    fetchAllCountryIds().then((fetchedCountryIds) => {
-      setCountryIds(fetchedCountryIds);
-      console.log(fetchedCountryIds); // Log the fetched country IDs
-    });
-
-    async function fetchUserId() {
-      const id = await getSessionId();
-      setUserId(id);
-    }
-
-    fetchUserId();
-
-  }, []);
-
-  // const [commandInput, setCommandInput] = React.useState<string>("");
-  // const results = useQuery({
-  //   queryKey: ["courseCategories"],
-  //   queryFn: async () => await searchCategories({ title: commandInput }),
-  // });
+  const [commandInput, setCommandInput] = React.useState<string>("");
+  const results = useQuery({
+    queryKey: ["courseCategories"],
+    queryFn: async () => await searchRegion({ name: commandInput }),
+  });
 
   return (
     <div className="space-y-6 mt-6">
@@ -142,6 +112,8 @@ export default function CourseGeneral() {
                 <FormLabel>Region Id</FormLabel>
                 <Select
                   {...field}
+                  // inputValue={commandInput}
+                  // setInputValue={setCommandInput}
                   onValueChange={field.onChange}
                   defaultValue={field.value}
                 >
@@ -151,9 +123,9 @@ export default function CourseGeneral() {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {countryIds.map((id) => (
-                      <SelectItem key={id} value={id ? id : ""}>
-                        {id}
+                    {results.data?.map((region) => (
+                      <SelectItem key={region.id} value={`${region.id}`}>
+                        {region.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

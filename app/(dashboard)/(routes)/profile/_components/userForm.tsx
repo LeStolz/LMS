@@ -17,6 +17,7 @@ import UserGeneral from "./userGeneral";
 import UserBankAccount from "./userBankAccount";
 import UserLecturer from "./userLecturer";
 import { UserWithDetails } from "@/types/user";
+import { getRegion } from "@/app/api/region/region";
 
 const formSchema = z.object({
   name: z.string().min(1, {
@@ -62,6 +63,7 @@ const formSchema = z.object({
       message: "Cardholder name is required.",
     })
     .optional(),
+    regionId: z.union([z.string(), z.number()]).optional(),
   zip: z
     .string()
     .min(1, {
@@ -165,6 +167,7 @@ export default function Component({ user }: { user: UserWithDetails }) {
       goodThru: user.goodThru ?? undefined,
       cvc: user.cvc ?? undefined,
       cardholderName: user.cardholderName ?? undefined,
+      regionId: user.regionId ?? undefined,
       zip: user.zip ?? undefined,
 
       dob: user.dob ?? undefined,
@@ -185,7 +188,11 @@ export default function Component({ user }: { user: UserWithDetails }) {
   const [error, setError] = useState<string | undefined>(undefined);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+
+    console.log(values.oldPassword);
     try {
+
+
       await updateUser({
         id: user.id,
         type: user.type,
@@ -201,10 +208,14 @@ export default function Component({ user }: { user: UserWithDetails }) {
       router.refresh();
       setError(undefined);
     } catch (error) {
-      if (formatError(error).includes("Bank")) {
+      if (!values.oldPassword) {
+        toast.error("Fields of general is required.");
+      } else if (formatError(error).includes("Bank")) {
         toast.success("General info saved!");
       } else if (formatError(error).includes("Lecturer")) {
         toast.success("General info and bank account saved!");
+      } else {
+        toast.error("An error occurred while saving the profile.");
       }
       setError(formatError(error));
     }

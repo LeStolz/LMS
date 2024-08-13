@@ -8,21 +8,9 @@ import { redirect } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getCourseByOwner } from "@/app/api/course/course";
 
-async function getData(): Promise<any[]> {
-  // Fetch data from your API here.
-  return [
-    {
-      id: "728ed52f",
-      amount: 100,
-      status: "pending",
-      email: "m@example.com",
-    },
-    // ...
-  ];
-}
-
 export default async function Component() {
   let user;
+  let data;
 
   try {
     user = await authorize(["LN", "LT", "AD"], true);
@@ -33,15 +21,13 @@ export default async function Component() {
   if (!user) {
     return redirect("/");
   }
-  let data;
-  data = await getCourseByOwner({ ownerId: user.id });
-  // if (user) {
-  //   data = useQuery({
-  //     queryKey: ["courses"],
-  //     queryFn: async () => await getCourseByOwner({ ownerId: user.id }),
-  //   });
-  // }
   
+  try{
+    data = await getCourseByOwner({ ownerId: user.id });
+  }
+  catch{
+    return redirect("/");
+  }
 
   return (
     <>

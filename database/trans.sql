@@ -133,8 +133,6 @@ COMMIT TRANSACTION
 GO
 
 
-
-
 CREATE OR ALTER PROCEDURE [dbo].[updateUserAndBankAccount]
 	@id INT,
 	@type CHAR(2),
@@ -744,6 +742,19 @@ BEGIN TRANSACTION
 	DROP TABLE #answers
 COMMIT TRANSACTION
 GO
+-----
+CREATE OR ALTER PROCEDURE [dbo].[deleteCourse]
+	@id INT
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	DELETE FROM [dbo].[course]
+	WHERE id = @id
+COMMIT TRANSACTION
+GO
+-------
 
 
 
@@ -1035,8 +1046,8 @@ CREATE OR ALTER PROCEDURE [dbo].[updateCourse]
 	@thumbnail NVARCHAR(256),
 	@advertisementVideo NVARCHAR(256),
 	@updatedAt DATETIME,
-	@categoryIds NVARCHAR(MAX),
-	@ownerSharePercentages NVARCHAR(MAX)
+	@categoryIds NVARCHAR(MAX)
+	-- @ownerSharePercentages NVARCHAR(MAX)
 AS
 BEGIN TRANSACTION
 	SET XACT_ABORT ON
@@ -1056,7 +1067,7 @@ BEGIN TRANSACTION
 
 	EXEC [dbo].[updateCourseCategories] @id, @categoryIds
 
-	EXEC [dbo].[updateOwnerSharePercentages] @id, @ownerSharePercentages
+	-- EXEC [dbo].[updateOwnerSharePercentages] @id, @ownerSharePercentages
 
 	SELECT *
 	FROM [dbo].[course]
@@ -1082,6 +1093,29 @@ COMMIT TRANSACTION
 GO
 
 
+-----
+CREATE OR ALTER PROCEDURE [dbo].[selectRegion]
+AS 
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	SELECT * FROM [dbo].[region]
+COMMIT TRANSACTION
+GO
+
+CREATE OR ALTER PROCEDURE [dbo].[searchRegionById]
+	@id INT
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	SELECT name FROM [dbo].[region]
+	WHERE id = @id
+COMMIT TRANSACTION
+
+----
 
 
 CREATE OR ALTER PROCEDURE [dbo].[searchRegions]

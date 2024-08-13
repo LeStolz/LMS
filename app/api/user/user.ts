@@ -4,6 +4,9 @@ import { User, UserWithDetails, UserWithPassword } from "@/types/user";
 import { encrypt, getSessionId } from "../auth/auth";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
+import { Search } from "lucide-react";
+import { searchRegion } from "../region/region";
+import { Region } from "@/types/region";
 
 const expiresDuration = parseInt(process.env.JWT_EXPIRES_IN_SECONDS!);
 
@@ -84,6 +87,10 @@ export async function updateUser(
       .execute("updateUser");
 
     if (user.type != "AD") {
+      if (typeof user.regionId !== "number") {
+        user.regionId = Number(user.regionId);
+      }
+
       await (
         await db()
       )
