@@ -255,7 +255,7 @@ CREATE PROCEDURE RandomizeOwnedCourse
 AS
 BEGIN
     DECLARE @courseId INT;
-    DECLARE @ownerEmail VARCHAR(256);
+    DECLARE @ownerId INT;
     DECLARE @sharePercentage FLOAT;
 
     DECLARE course_cursor CURSOR FOR
@@ -268,15 +268,14 @@ BEGIN
 
     WHILE @@FETCH_STATUS = 0
     BEGIN
-        SET @ownerEmail = (SELECT TOP 1
-            email
+        SET @ownerId = (SELECT TOP 1 id
         FROM dbo.lecturer
         ORDER BY NEWID());
         SET @sharePercentage = ROUND((RAND() * 100), 2);
         INSERT INTO dbo.ownedCourse
-            (ownerEmail, courseId, sharePercentage)
+            (ownerId, courseId, sharePercentage)
         VALUES
-            (@ownerEmail, @courseId, @sharePercentage);
+            (@ownerId, @courseId, @sharePercentage);
 
         FETCH NEXT FROM course_cursor INTO @courseId;
     END
@@ -396,14 +395,16 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    DECLARE @courseId INT;
+    DECLARE @courseId SMALLINT;
     DECLARE @sectionId INT = 1;
     DECLARE @title NVARCHAR(64);
     DECLARE @description NVARCHAR(512);
     DECLARE @type CHAR(1);
+    DECLARE @pos SMALLINT;
+
     DECLARE course_cursor CURSOR FOR
-    SELECT id
-    FROM dbo.course;
+        SELECT id
+        FROM dbo.course;
 
     OPEN course_cursor;
     FETCH NEXT FROM course_cursor INTO @courseId;
@@ -414,12 +415,11 @@ BEGIN
         SET @title = 'Course Section ' + CAST(@sectionId AS NVARCHAR(64));
         SET @description = 'Description for Course Section ' + CAST(@sectionId AS NVARCHAR(512));
         SET @type = (SELECT TOP 1 type FROM (VALUES ('M'), ('L'), ('E')) AS T(type) ORDER BY NEWID());
-
-        -- Insert the new course section
+        SET @pos = CAST((RAND() * 32766 + 1) AS SMALLINT);
         INSERT INTO dbo.courseSection
-            (id, courseId, nextCourseSectionId, title, description, type)
+            (id, courseId, pos, title, description, type)
         VALUES
-            (@sectionId, @courseId, NULL, @title, @description, @type);
+            (@sectionId, @courseId, @pos, @title, @description, @type);
 
         -- Increment the section ID for the next insertion
         SET @sectionId = @sectionId + 1;
@@ -1389,44 +1389,44 @@ BEGIN
 END;
 GO
 
-
 EXEC InsertCourseCategory;
-exec RandomizeBankAccount;
-Exec RandomizeCourseDescriptionDetail;
-Exec RandomizeEnrolledCourseByCourse;
-exec RandomizeCourseReview;
+-- -- exec RandomizeBankAccount;
+-- -- Exec RandomizeCourseDescriptionDetail;
+-- -- Exec RandomizeEnrolledCourseByCourse;
+-- -- exec RandomizeCourseReview;
 exec RandomizeOwnedCourse;
-exec RandomizeOwnedCourseTop10Lecturer; -- nen dung nay neu RandomizeOwnedCourse qua lau 
-exec RandomizeCourseAnnouncement;
+-- -- exec RandomizeOwnedCourseTop10Lecturer; -- nen dung nay neu RandomizeOwnedCourse qua lau 
+-- -- exec RandomizeCourseAnnouncement;
 
 -- test đống này
 
 exec RandomCourseSections;
-exec RandomAndAssignNextCourseSections; -- nay chua fix 
-exec RandomizeCourseLesson;
-exec RandomizeCourseExercise;
+-- -- exec RandomAndAssignNextCourseSections; -- nay chua fix 
+-- -- exec RandomizeCourseLesson;
+-- -- exec RandomizeCourseExercise;
 
 
-exec RandomizeCourseSectionProgress;
+-- -- exec RandomizeCourseSectionProgress;
 -- exec RandomizeFileData 100000;
-exec RandomizeCourseSectionFile;
 
-exec RandomizeCourseExerciseProgress;
-exec RandomizeCourseExerciseSolutionFile;
+-- -- exec RandomizeCourseSectionFile;
 
-
-exec RandomizeCourseChat;
-exec RandomizeCourseChatMember;
-exec RandomizeMessageAndNotification;
+-- -- exec RandomizeCourseExerciseProgress;
+-- -- exec RandomizeCourseExerciseSolutionFile;
 
 
-exec RandomizeCourseQuiz;
-exec RandomizeCourseQuizQuestion;
-exec RandomizeCourseQuizQuestionAnswer;
+-- -- exec RandomizeCourseChat;
+-- -- exec RandomizeCourseChatMember;
+-- -- exec RandomizeMessageAndNotification;
 
-exec RandomizeCoupon;
-exec RandomizeOwnedCoupon;
 
-exec RandomizeTransactionData;
+-- -- exec RandomizeCourseQuiz;
+-- -- exec RandomizeCourseQuizQuestion;
+-- -- exec RandomizeCourseQuizQuestionAnswer;
+
+-- -- exec RandomizeCoupon;
+-- -- exec RandomizeOwnedCoupon;
+
+-- -- exec RandomizeTransactionData;
 
 
