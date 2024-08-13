@@ -73,8 +73,9 @@ COMMIT TRANSACTION
 GO
 
 
-
-
+IF OBJECT_ID('[dbo].[insertUser]', 'P') IS NOT NULL
+    DROP PROCEDURE [dbo].[insertUser];
+GO
 CREATE OR ALTER PROCEDURE [dbo].[insertUser]
 	@email VARCHAR(256),
 	@password VARCHAR(128),
@@ -326,7 +327,41 @@ BEGIN TRANSACTION
 COMMIT TRANSACTION
 GO
 
+---------------------
+CREATE OR ALTER PROCEDURE [dbo].[selectAllCourses]	
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
 
+	SELECT * FROM [dbo].[course]
+COMMIT TRANSACTION
+GO
+
+CREATE OR ALTER PROCEDURE [dbo].[getCoursesById]
+	@id INT
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	SELECT * FROM [dbo].[course]
+	WHERE id = @id
+COMMIT TRANSACTION
+GO
+
+CREATE OR ALTER PROCEDURE [dbo].[selectCourseByOwner]
+	@ownerId INT
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	SELECT * FROM [dbo].[course]
+	WHERE id IN (SELECT courseId FROM [dbo].[ownedCourse] WHERE ownerId = @ownerId)
+COMMIT TRANSACTION
+GO
+---------------------
 
 
 CREATE OR ALTER PROCEDURE [dbo].[insertCourse]
@@ -353,10 +388,13 @@ BEGIN TRANSACTION
 
 	DECLARE @courseId INT = SCOPE_IDENTITY()
 	INSERT INTO [dbo].[ownedCourse] VALUES (@ownerId, @courseId, 1)
+	INSERT INTO [dbo].[chat](type) VALUES ('C')
+	-- INSERT INTO [dbo].[chat] DEFAULT VALUES
 
-	INSERT INTO [dbo].[chat] DEFAULT VALUES
-	INSERT INTO [dbo].[courseChat] VALUES (SCOPE_IDENTITY(), @courseId)
-	INSERT INTO [dbo].[courseChatMember] VALUES (@ownerId, SCOPE_IDENTITY())
+	DECLARE @chatId INT = SCOPE_IDENTITY()
+
+	INSERT INTO [dbo].[courseChat] VALUES (@chatId, @courseId)
+	INSERT INTO [dbo].[courseChatMember] VALUES (@ownerId, @chatId)
 
 	SELECT *
 	FROM [dbo].[course]
