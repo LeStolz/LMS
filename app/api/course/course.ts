@@ -47,17 +47,30 @@ export async function getCourse<B extends boolean>({
     throw new Error("Unauthorized.");
   }
 
+  console.log("User", user.id);
+
   try {
     let course = (
       await (await db())
         .input("id", id)
         .input("withCategories", withCategories)
+        .input("withOwners", false)
+        .input("withSections", false)
+        .input("withDescriptionDetails", false)
+        .input("withReviews", false)
+        .input("learnerId", false)
         .execute("selectCourse")
     ).recordset?.[0];
 
-    course.categories = JSON.parse(course.categories).filter(
-      (category: Object) => category.hasOwnProperty("id")
-    );
+    if(course.categories === null) {
+      course.categories = [];
+    }
+    else{
+      course.categories = JSON.parse(course.categories).filter(
+        (category: Object) => category.hasOwnProperty("id")
+      );
+
+    }
 
     return course as B extends true ? Course & CourseCategories : Course;
   } catch (error) {
@@ -65,80 +78,7 @@ export async function getCourse<B extends boolean>({
   }
 }
 
-export async function getCourseOwner({
-  id,
-}: {
-  id: number;
-}) {
-  const user = await authorize(["LN", "LT", "AD"]);
 
-  if (!user) {
-    throw new Error("Unauthorized.");
-  }
-
-  try {
-    let course = (
-      await (await db())
-        .input("id", id)
-        .execute("getCoursesById")
-    ).recordset[0];
-
-    if (course.categories) {
-      course.categories = JSON.parse(course.categories).filter(
-      (category: Object) => category.hasOwnProperty("id")
-      );
-    } else {
-      course.categories = [];
-    }
-
-    return course;
-  } catch (error) {
-    throw error;
-  }
-}
-
-
-export async function getAllCourses() {
-  const user = await authorize(["LN", "LT", "AD"]);
-
-  if (!user) {
-    throw new Error("Unauthorized.");
-  }
-
-  try {
-    let courses = (
-      await (await db()).execute("selectAllCourses")
-    ).recordset;
-
-    return courses;
-  } catch (error) {
-    throw error;
-  }
-}
-
-export async function getCourseByOwner({
-  ownerId,
-}: {
-  ownerId: number;
-}) {
-  const user = await authorize(["LT"]);
-
-  if (!user) {
-    throw new Error("Unauthorized.");
-  }
-
-  try {
-    let courses = (
-      await (await db())
-        .input("ownerId", ownerId)
-        .execute("selectCourseByOwner")
-    ).recordset;
-
-    return courses;
-  } catch (error) {
-    throw error;
-  }
-}
 
 
 export async function updateCourse({
@@ -198,6 +138,33 @@ export async function deleteCourse({
         .input("id", id)
         .execute("deleteCourse")
     ).recordset?.[0];
+
+    return course;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function searchCourseByOwner(){
+  const user = await authorize(["LT"]);
+
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
+
+  try {
+    const course: Course[] = (
+      await (await db())
+        .input("title",'')
+        .input("status", null)
+        .input("offset", 0)
+        .input("categoryIds", '[]')
+        .input("lecturerId", user.id)
+        .input("learnerId", null)
+        .input("learningStatus", null)
+        .input("orderBy", 'C')
+        .execute("searchCourses")
+    ).recordset;
 
     return course;
   } catch (error) {

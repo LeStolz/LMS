@@ -1,7 +1,7 @@
 import { ReactNode, Suspense } from "react";
 import { redirect } from "next/navigation";
 import { authorize } from "@/app/api/user/user";
-import { getCourse, getCourseOwner } from "@/app/api/course/course";
+import { getCourse } from "@/app/api/course/course";
 import CourseForm from "./_components/courseForm";
 import { Loader2 } from "lucide-react";
 
@@ -12,8 +12,9 @@ export default async function Component({
 }) {
   const user = authorize(["LT"]);
 
-  const course = await getCourseOwner({
+  const course = await getCourse({
     id: parseInt(params.courseId),
+    withCategories: true,
   });
 
   if (!course) {

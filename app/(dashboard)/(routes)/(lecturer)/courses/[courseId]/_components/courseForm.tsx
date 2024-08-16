@@ -16,6 +16,7 @@ import CourseGeneral from "./courseGeneral";
 import { useRouter } from "next/navigation";
 import { updateCourse } from "@/app/api/course/course";
 import CourseMedia from "./courseMedia";
+import CourseResource from "./courseResource";
 
 const formSchema = z.object({
   title: z
@@ -104,6 +105,7 @@ export default function Component({
               <TabsTrigger value="media">Media</TabsTrigger>
               <TabsTrigger value="sections">Sections</TabsTrigger>
               <TabsTrigger value="billings">Billings</TabsTrigger>
+              <TabsTrigger value="resource">Resources</TabsTrigger>
             </TabsList>
             <TabsContent value="general">
               <CourseGeneral />
@@ -113,6 +115,9 @@ export default function Component({
             </TabsContent>
             <TabsContent value="sections">Sections</TabsContent>
             <TabsContent value="billings">Billings</TabsContent>
+            <TabsContent value="resource">
+              <CourseResource onSubmit={onSubmit}/>
+            </TabsContent>
           </Tabs>
           <div>
             <div className="flex flex-row gap-2">

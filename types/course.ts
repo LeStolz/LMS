@@ -27,3 +27,9 @@ export type Course = CourseEssentials & {
 export type CourseCategories = {
   categories: Category[];
 };
+
+export type CourseFile = {
+  id: number;
+  url: string;
+  type: "V" | "D";
+};
