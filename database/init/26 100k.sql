@@ -358,7 +358,7 @@ BEGIN
     WHILE @@FETCH_STATUS = 0
     BEGIN
         SET @ownerEmail = (SELECT TOP 1 email FROM #TopLecturers ORDER BY NEWID());
-        SET @sharePercentage = ROUND((RAND() * 100), 2);
+        SET @sharePercentage = ROUND((RAND()), 2);
 
         INSERT INTO dbo.ownedCourse
             (ownerEmail, courseId, sharePercentage)
@@ -1009,40 +1009,6 @@ BEGIN
 END;
 GO
 
-IF OBJECT_ID('[dbo].[RandomizeFileData]', 'P') IS NOT NULL
-    DROP PROCEDURE [dbo].[RandomizeFileData];
-GO
-
-CREATE PROCEDURE RandomizeFileData @max_records INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    DECLARE @id INT;
-    DECLARE @path NVARCHAR(256);
-    DECLARE @name NVARCHAR(128);
-    DECLARE @counter INT = 1;
-
-    WHILE @counter <= @max_records
-    BEGIN
-        SET @path = '/path/to/file' + CAST(@counter AS NVARCHAR(10)) + '.txt';
-        SET @name = 'File ' + CAST(@counter AS NVARCHAR(10));
-
-        BEGIN TRY
-            INSERT INTO dbo.[file]
-                (path, name)
-            VALUES
-                (@path, @name);
-        END TRY
-        BEGIN CATCH
-            PRINT 'Error inserting record for file ' + CAST(@counter AS NVARCHAR(10));
-        END CATCH;
-
-        SET @counter = @counter + 1;
-    END;
-END;
-GO
-
 
 IF OBJECT_ID('[dbo].[RandomizeCourseSectionFile]', 'P') IS NOT NULL
     DROP PROCEDURE [dbo].[RandomizeCourseSectionFile];
@@ -1143,247 +1109,6 @@ END;
 GO
 
 
-IF OBJECT_ID('[dbo].[RandomizeCourseQuiz]', 'P') IS NOT NULL
-    DROP PROCEDURE [dbo].[RandomizeCourseQuiz];
-GO
-
-CREATE PROCEDURE RandomizeCourseQuiz
-AS
-BEGIN
-    DECLARE @id INT;
-    DECLARE @courseId INT;
-    DECLARE @durationInMinutes TINYINT;
-    DECLARE exercise_cursor CURSOR FOR
-    SELECT id, courseId
-    FROM dbo.courseExercise;
-
-    OPEN exercise_cursor;
-    FETCH NEXT FROM exercise_cursor INTO @id, @courseId;
-
-    WHILE @@FETCH_STATUS = 0
-    BEGIN
-        SET @durationInMinutes = ABS(CHECKSUM(NEWID())) % 60 + 1;
-        INSERT INTO dbo.courseQuiz
-            (id, courseId, durationInMinutes)
-        VALUES
-            (@id, @courseId, @durationInMinutes);
-
-        FETCH NEXT FROM exercise_cursor INTO @id, @courseId;
-    END;
-
-    CLOSE exercise_cursor;
-    DEALLOCATE exercise_cursor;
-END;
-GO
-
-IF OBJECT_ID('[dbo].[RandomizeCourseQuizQuestion]', 'P') IS NOT NULL
-    DROP PROCEDURE [dbo].[RandomizeCourseQuizQuestion];
-GO
-
-CREATE PROCEDURE RandomizeCourseQuizQuestion
-AS
-BEGIN
-    DECLARE @id INT;
-    DECLARE @courseQuizId INT;
-    DECLARE @courseId INT;
-    DECLARE @question NVARCHAR(512);
-    DECLARE @correctAnswerIndex TINYINT;
-
-    DECLARE @questionPool TABLE (question NVARCHAR(512));
-    INSERT INTO @questionPool
-        (question)
-    VALUES
-        ('What is the capital of France?'),
-        ('Who wrote "To Kill a Mockingbird"?'),
-        ('What is the powerhouse of the cell?'),
-        ('What year did the Titanic sink?'),
-        ('Who painted the Mona Lisa?');
-    DECLARE quiz_cursor CURSOR FOR
-    SELECT id, courseId
-    FROM dbo.courseQuiz;
-
-    OPEN quiz_cursor;
-    FETCH NEXT FROM quiz_cursor INTO @courseQuizId, @courseId;
-
-    WHILE @@FETCH_STATUS = 0
-    BEGIN
-        SET @id = (SELECT COALESCE(MAX(id), 0) + 1
-        FROM dbo.courseQuizQuestion);
-        SET @correctAnswerIndex = ABS(CHECKSUM(NEWID())) % 4;
-        SELECT TOP 1
-            @question = question
-        FROM @questionPool
-        ORDER BY NEWID();
-        INSERT INTO dbo.courseQuizQuestion
-            (id, courseQuizId, courseId, question, correctAnswerIndex)
-        VALUES
-            (@id, @courseQuizId, @courseId, @question, @correctAnswerIndex);
-
-        FETCH NEXT FROM quiz_cursor INTO @courseQuizId, @courseId;
-    END;
-
-    CLOSE quiz_cursor;
-    DEALLOCATE quiz_cursor;
-END;
-GO
-
-IF OBJECT_ID('[dbo].[RandomizeCourseQuizQuestionAnswer]', 'P') IS NOT NULL
-    DROP PROCEDURE [dbo].[RandomizeCourseQuizQuestionAnswer];
-GO
-
-CREATE PROCEDURE RandomizeCourseQuizQuestionAnswer
-AS
-BEGIN
-    DECLARE @courseQuizQuestionId INT;
-    DECLARE @courseQuizId INT;
-    DECLARE @courseId INT;
-    DECLARE @symbol CHAR(1);
-    DECLARE @answer NVARCHAR(256);
-
-    DECLARE question_cursor CURSOR FOR
-    SELECT id, courseQuizId, courseId
-    FROM dbo.courseQuizQuestion;
-
-    OPEN question_cursor;
-    FETCH NEXT FROM question_cursor INTO @courseQuizQuestionId, @courseQuizId, @courseId;
-
-    WHILE @@FETCH_STATUS = 0
-    BEGIN
-        SET @symbol = 'A';
-        WHILE @symbol <= 'D'
-        BEGIN
-            SET @answer = CASE @symbol
-                              WHEN 'A' THEN 'Option A answer'
-                              WHEN 'B' THEN 'Option B answer'
-                              WHEN 'C' THEN 'Option C answer'
-                              WHEN 'D' THEN 'Option D answer'
-                          END;
-
-            INSERT INTO dbo.courseQuizQuestionAnswer
-                (courseQuizQuestionId, courseQuizId, courseId, symbol, answer)
-            VALUES
-                (@courseQuizQuestionId, @courseQuizId, @courseId, @symbol, @answer);
-
-            SET @symbol = CHAR(ASCII(@symbol) + 1);
-        END;
-
-        FETCH NEXT FROM question_cursor INTO @courseQuizQuestionId, @courseQuizId, @courseId;
-    END;
-
-    CLOSE question_cursor;
-    DEALLOCATE question_cursor;
-END;
-GO
-
-IF OBJECT_ID('[dbo].[RandomizeCoupon]', 'P') IS NOT NULL
-    DROP PROCEDURE [dbo].[RandomizeCoupon];
-GO
-
-CREATE PROCEDURE RandomizeCoupon
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    DECLARE @counter INT = 0;
-    DECLARE @max_records INT = 10;
-    DECLARE @code VARCHAR(16);
-    DECLARE @spawnPercentage FLOAT;
-    DECLARE @discountPercentage FLOAT;
-
-    WHILE @counter < @max_records
-    BEGIN
-        SET @code = LEFT(CONVERT(VARCHAR(40), NEWID()), 16);
-
-        SET @spawnPercentage = CAST(RAND() AS FLOAT);
-
-        SET @discountPercentage = CAST(RAND() AS FLOAT);
-
-        INSERT INTO dbo.coupon
-            (code, spawnPercentage, discountPercentage)
-        VALUES
-            (@code, @spawnPercentage, @discountPercentage);
-
-        SET @counter = @counter + 1;
-    END;
-END;
-GO
-
-IF OBJECT_ID('[dbo].[RandomizeOwnedCoupon]', 'P') IS NOT NULL
-    DROP PROCEDURE [dbo].[RandomizeOwnedCoupon];
-GO
-
-CREATE PROCEDURE RandomizeOwnedCoupon
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    DECLARE @couponId INT;
-    DECLARE @ownerEmail VARCHAR(256);
-    DECLARE @expirationDate DATE;
-
-    DECLARE @max_records INT = 100000;
-    DECLARE @counter INT = 0;
-
-    DECLARE coupon_cursor CURSOR LOCAL FAST_FORWARD FOR
-        SELECT id
-    FROM dbo.coupon;
-
-    CREATE TABLE #RandomLearners
-    (
-        email VARCHAR(256) NOT NULL,
-        CONSTRAINT PK_RandomLearners PRIMARY KEY (email)
-    );
-
-    INSERT INTO #RandomLearners
-        (email)
-    SELECT DISTINCT email
-    FROM dbo.learner;
-
-    OPEN coupon_cursor;
-
-    FETCH NEXT FROM coupon_cursor INTO @couponId;
-
-    WHILE @@FETCH_STATUS = 0 AND @counter < @max_records
-    BEGIN
-        SELECT TOP 1
-            @ownerEmail = email
-        FROM #RandomLearners
-        ORDER BY NEWID();
-
-        SET @expirationDate = DATEADD(DAY, ABS(CHECKSUM(NEWID()) % 365) + 1, GETDATE());
-
-        print @ownerEmail
-        print @couponId
-        print @expirationDate;
-
-        IF NOT EXISTS (
-            SELECT 1
-        FROM dbo.ownedCoupon
-        WHERE ownerEmail = @ownerEmail AND couponId = @couponId
-        )
-        BEGIN
-            INSERT INTO dbo.ownedCoupon
-                (ownerEmail, couponId, expirationDate)
-            VALUES
-                (@ownerEmail, @couponId, @expirationDate);
-
-            SET @counter = @counter + 1;
-        END
-
-        DELETE FROM #RandomLearners WHERE email = @ownerEmail;
-
-        FETCH NEXT FROM coupon_cursor INTO @couponId;
-    END;
-
-    CLOSE coupon_cursor;
-    DEALLOCATE coupon_cursor;
-    DROP TABLE #RandomLearners;
-END;
-GO
-
-
-
-
 IF OBJECT_ID('[dbo].[RandomizeTransactionData]', 'P') IS NOT NULL
     DROP PROCEDURE [dbo].[RandomizeTransactionData];
 GO
@@ -1431,8 +1156,6 @@ BEGIN
         FROM dbo.enrolledCourse
         WHERE courseId = @courseId
         ORDER BY NEWID();
-
-        print @initiatorEmail
 
         SELECT TOP 1
             @receiverId = ownerId
@@ -1490,7 +1213,7 @@ EXEC InsertCourseCategory;
 exec RandomizeRegion;
 exec RandomizeBankAccount;
 -- -- Exec RandomizeCourseDescriptionDetail;
-exec RandomizeEnrolledCourseByCourse;
+-----------exec RandomizeEnrolledCourseByCourse;
 -- -- exec RandomizeCourseReview;
 exec RandomizeOwnedCourse;
 exec RandomizeCourseAnnouncement;
@@ -1500,7 +1223,6 @@ exec RandomCourseSections;
 -- -- exec RandomizeCourseLesson;
 exec RandomizeCourseExercise;
 -- -- exec RandomizeCourseSectionProgress;
--- exec RandomizeFileData 100000;
 
 exec RandomizeCourseSectionFile;
 
@@ -1511,11 +1233,5 @@ exec RandomizeCourseChat;
 exec RandomizeCourseChatMember;
 exec RandomizeMessage;
 exec RandomizeNotification;
--- -- exec RandomizeCourseQuiz;
--- -- exec RandomizeCourseQuizQuestion;
--- -- exec RandomizeCourseQuizQuestionAnswer;
 
--- -- exec RandomizeCoupon;
--- -- exec RandomizeOwnedCoupon;
-
--- -- exec RandomizeTransactionData;
+exec RandomizeTransactionData;
