@@ -66,7 +66,7 @@ BEGIN TRANSACTION
 	SET XACT_ABORT ON
 	SET NOCOUNT ON
 
-	SELECT *
+	SELECT id
 	FROM [dbo].[user]
 	WHERE email = @email AND password = @password
 COMMIT TRANSACTION
@@ -77,8 +77,8 @@ GO
 
 CREATE OR ALTER PROCEDURE [dbo].[insertUser]
 	@email VARCHAR(256),
-	@password VARCHAR(128),
 	@name NVARCHAR(128),
+	@password VARCHAR(128),
 	@type CHAR(2)
 AS
 BEGIN TRANSACTION
@@ -1136,8 +1136,6 @@ BEGIN TRANSACTION
 	DROP TABLE #categoryIds
 COMMIT TRANSACTION
 GO
-
-
 
 
 CREATE OR ALTER PROCEDURE [dbo].[searchCategoriesByStats]
