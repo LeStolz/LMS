@@ -47,6 +47,8 @@ export default function CourseGeneral({
     name: "workExperiences",
   });
 
+  console.log(workFields);
+
   return (
     <div className="space-y-6 mt-6">
       <FormField

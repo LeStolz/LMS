@@ -688,12 +688,28 @@ BEGIN TRANSACTION
 	SET XACT_ABORT ON
 	SET NOCOUNT ON
 
+	DECLARE @temp SMALLINT
+
+	SET @temp = (SELECT pos FROM [dbo].[courseSection] WHERE id = @id AND courseId = @courseId)
+
+	IF (SELECT pos FROM [dbo].[courseSection] WHERE pos = @pos AND courseId = @courseId) > 0
+	BEGIN
+		UPDATE [dbo].[courseSection]
+		SET pos = -ABS(pos)
+		WHERE pos = @pos AND courseId = @courseId
+	END
+
 	UPDATE [dbo].[courseSection]
 	SET
 	pos = @pos,
 	title = @title,
 	description = @description
 	WHERE id = @id AND courseId = @courseId
+
+	UPDATE [dbo].[courseSection]
+	SET
+	pos = @temp
+	WHERE pos = -ABS(@pos) AND courseId = @courseId
 COMMIT TRANSACTION
 GO
 
