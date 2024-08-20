@@ -77,7 +77,7 @@ BEGIN
 
     WHILE @@FETCH_STATUS = 0
     BEGIN
-        SET @accountNumber = RIGHT('0000000000000000' + CAST(ABS(CHECKSUM(NEWID())) AS VARCHAR(16)), 16);
+        SET @accountNumber = CONVERT(VARCHAR(16), CONVERT(NUMERIC(16, 0), RAND() * 8999999999999999) + 1000000000000000);
         SET @goodThru = DATEADD(DAY, ABS(CHECKSUM(NEWID()) % 365) + 1, GETDATE());
         SET @cvc = RIGHT('000' + CAST(ABS(CHECKSUM(NEWID()) % 1000) AS VARCHAR(3)), 3);
         SET @region = ( SELECT TOP 1 id
@@ -138,7 +138,7 @@ GO
 IF OBJECT_ID('[dbo].[RandomizeCourseDescriptionDetail]', 'P') IS NOT NULL
     DROP PROCEDURE [dbo].[RandomizeCourseDescriptionDetail];
 GO
-CREATE PROCEDURE RandomizeCourseDescriptionDetail
+CREATE OR ALTER PROCEDURE RandomizeCourseDescriptionDetail
 AS
 BEGIN
     DECLARE @courseId INT;
@@ -158,11 +158,11 @@ BEGIN
         SET @type = (SELECT TOP 1
             type
         FROM (VALUES
-                ('PREREQUISITE'),
-                ('OBJECTIVE'),
-                ('SKILL'),
-                ('TARGET_USER'),
-                ('LANGUAGE')) AS T(type)
+                ('P'),
+                ('O'),
+                ('S'),
+                ('T'),
+                ('L')) AS T(type)
         ORDER BY NEWID());
         INSERT INTO dbo.courseDescriptionDetail
             (courseId, content, type)
@@ -177,113 +177,119 @@ END;
 GO
 
 -- ham nay random bang cach duyet qua tung ban ghi trong bang course, sau do random 1 ban ghi trong bang learner
-IF OBJECT_ID('[dbo].[RandomizeEnrolledCourseByCourse]', 'P') IS NOT NULL
-    DROP PROCEDURE [dbo].[RandomizeEnrolledCourseByCourse];
+IF OBJECT_ID('[dbo].[RandomizeEnrolledCourse]', 'P') IS NOT NULL
+    DROP PROCEDURE [dbo].[RandomizeEnrolledCourse];
 GO
 
-CREATE PROCEDURE RandomizeEnrolledCourseByCourse
+CREATE OR ALTER PROCEDURE RandomizeEnrolledCourse
 AS
 BEGIN
-    DECLARE @learnerEmail VARCHAR(256);
+    DECLARE @learnerId VARCHAR(256);
     DECLARE @courseId INT;
-    DECLARE @status CHAR(1);
+    DECLARE @i INT = 0;
+    DECLARE @numCourse INT;
 
-    CREATE TABLE #RandomLearnerEmails
+    CREATE TABLE #CourseIds
     (
-        email VARCHAR(256) NOT NULL,
-        CONSTRAINT PK_RandomLearnerEmails PRIMARY KEY (email)
+        id VARCHAR(256) NOT NULL,
+        CONSTRAINT PK_CourseIds PRIMARY KEY (id)
     );
 
-    INSERT INTO #RandomLearnerEmails (email)
-    SELECT email
-    FROM dbo.learner;
-
-    DECLARE course_cursor CURSOR FOR
+    INSERT INTO #CourseIds (id)
     SELECT id
     FROM dbo.course;
+    
+    SET @numCourse = FLOOR(RAND() * 3 + 2);
 
-    OPEN course_cursor;
-    FETCH NEXT FROM course_cursor INTO @courseId;
+    DECLARE learner_cursor CURSOR FOR
+    SELECT id
+    FROM dbo.learner;
 
-    WHILE @@FETCH_STATUS = 0
+    OPEN learner_cursor;
+    FETCH NEXT FROM learner_cursor INTO @learnerId;
+
+    WHILE @@FETCH_STATUS = 0 AND @i < @numCourse
     BEGIN
-        SELECT TOP 1 @learnerEmail = email
-        FROM #RandomLearnerEmails
+        SELECT TOP 1 @courseId = id
+        FROM #CourseIds
         ORDER BY NEWID();
-
-        SET @status = (SELECT TOP 1
-            status
-        FROM (VALUES
-                ('B'),
-                ('L'),
-                ('F')) AS T(status)
-        ORDER BY NEWID());
 
         -- Insert into enrolledCourse table
         INSERT INTO dbo.enrolledCourse
-            (learnerEmail, courseId, status)
+            (learnerId, courseId)
         VALUES
-            (@learnerEmail, @courseId, @status);
+            (@learnerId, @courseId);
 
-        FETCH NEXT FROM course_cursor INTO @courseId;
+        SET @i = @i + 1;
+
+        IF @i >= @numCourse
+        BEGIN
+            FETCH NEXT FROM learner_cursor INTO @learnerId;
+            SET @i = 0;
+            SET @numCourse = FLOOR(RAND() * 3 + 2);
+        END
+
     END
 
-    CLOSE course_cursor;
-    DEALLOCATE course_cursor;
+    CLOSE learner_cursor;
+    DEALLOCATE learner_cursor;
 
-    DROP TABLE #RandomLearnerEmails;
+    DROP TABLE #CourseIds;
 END;
 GO
 
 IF OBJECT_ID('[dbo].[RandomizeCourseReview]', 'P') IS NOT NULL
     DROP PROCEDURE [dbo].[RandomizeCourseReview];
 GO
-CREATE PROCEDURE RandomizeCourseReview
+CREATE OR ALTER PROCEDURE RandomizeCourseReview
 AS
 BEGIN
-    DECLARE @learnerEmail VARCHAR(256);
+    DECLARE @learnerId VARCHAR(256);
     DECLARE @courseId INT;
     DECLARE @courseCreatedAt DATE;
     DECLARE @reviewCreatedAt DATETIME;
     DECLARE @rating TINYINT;
     DECLARE @content NVARCHAR(512);
-    DECLARE @subtitle NVARCHAR(128);
-    DECLARE @reviewDays INT;
+    DECLARE @EndDate DATE = GETDATE();
+
     DECLARE enrolledCourse_cursor CURSOR FOR
-    SELECT learnerEmail, courseId
+    SELECT learnerId, courseId
     FROM dbo.enrolledCourse;
 
     OPEN enrolledCourse_cursor;
-    FETCH NEXT FROM enrolledCourse_cursor INTO @learnerEmail, @courseId;
+    FETCH NEXT FROM enrolledCourse_cursor INTO @learnerId, @courseId;
 
     WHILE @@FETCH_STATUS = 0
     BEGIN
-        SELECT @subtitle = subtitle
-        FROM dbo.course
-        WHERE id = @courseId;
         SELECT @courseCreatedAt = createdAt
         FROM dbo.course
         WHERE id = @courseId;
-        SET @reviewDays = DATEDIFF(DAY, @courseCreatedAt, GETDATE());
-        SET @reviewCreatedAt = DATEADD(DAY, 1 + (RAND() * (@reviewDays - 1)), @courseCreatedAt);
+
+        SET @reviewCreatedAt = DATEADD(day, ABS(CHECKSUM(NEWID())) % (DATEDIFF(day, @courseCreatedAt, @EndDate) + 1), @courseCreatedAt);
         SET @rating = (SELECT FLOOR(RAND() * 5) + 1);
         SET @content = CASE 
-                          WHEN @rating = 5 THEN @subtitle + N' bài học rất hay'
-                          WHEN @rating BETWEEN 2 AND 4 THEN @subtitle + N' bài học ổn'
-                          WHEN @rating = 1 THEN @subtitle + N' bài học rất tệ'
+                          WHEN @rating = 5 THEN 'Very Good'
+                          WHEN @rating BETWEEN 2 AND 4 THEN 'Good'
+                          WHEN @rating = 1 THEN 'Very bad'
                        END;
-        INSERT INTO dbo.courseReview
-            (learnerEmail, courseId, createdAt, rating, content)
-        VALUES
-            (@learnerEmail, @courseId, @reviewCreatedAt, @rating, @content);
 
-        FETCH NEXT FROM enrolledCourse_cursor INTO @learnerEmail, @courseId;
+        BEGIN TRY
+        INSERT INTO dbo.courseReview
+            (learnerId, courseId, createdAt, rating, content)
+        VALUES
+            (@learnerId, @courseId, @reviewCreatedAt, @rating, @content);
+        End TRY
+        BEGIN CATCH
+            RAISERROR('Rating: %d', 16, 1, @rating);
+        END CATCH 
+        FETCH NEXT FROM enrolledCourse_cursor INTO @learnerId, @courseId;
     END
 
     CLOSE enrolledCourse_cursor;
     DEALLOCATE enrolledCourse_cursor;
 END;
 GO
+
 IF OBJECT_ID('[dbo].[RandomizeOwnedCourse]', 'P') IS NOT NULL
     DROP PROCEDURE [dbo].[RandomizeOwnedCourse];
 GO
@@ -295,6 +301,9 @@ BEGIN
     DECLARE @numLecturer INT;
     DECLARE @i INT = 0;
     DECLARE @sharePercentage FLOAT;
+    DECLARE @remainingSharePercentage FLOAT;
+    DECLARE @counter INT = 0;
+    DECLARE @max INT = 200000;
 
     DECLARE course_cursor CURSOR FOR
     SELECT id
@@ -306,74 +315,42 @@ BEGIN
     
     SET @numLecturer = FLOOR(RAND() * 3 + 1);
 
-    WHILE @@FETCH_STATUS = 0
+    WHILE @@FETCH_STATUS = 0 AND @counter < @max AND @i < @numLecturer
     BEGIN
         WHILE @i < @numLecturer
         BEGIN
             SET @ownerId = (SELECT TOP 1 id
             FROM dbo.lecturer
             ORDER BY NEWID());
-            SET @sharePercentage = ROUND(RAND(), 2);            
+
+            SET @remainingSharePercentage = 1 - 
+                        (SELECT ISNULL(SUM(sharePercentage), 0) 
+                         FROM [dbo].[ownedCourse] oc 
+                         WHERE @courseId = oc.courseId);
+
+            SET @sharePercentage = ROUND(RAND() * @remainingSharePercentage, 2);  
+
             INSERT INTO dbo.ownedCourse
                 (ownerId, courseId, sharePercentage)
             VALUES
                 (@ownerId, @courseId, @sharePercentage);
             
             SET @i = @i + 1;
+            SET @counter = @counter + 1;
         END
-        FETCH NEXT FROM course_cursor INTO @courseId;
-        SET @numLecturer = FLOOR(RAND() * 3 + 1);
-        SET @i = 0;
+
+        IF @i >= @numLecturer
+        BEGIN
+            FETCH NEXT FROM course_cursor INTO @courseId;
+            SET @numLecturer = FLOOR(RAND() * 3 + 1);
+            SET @i = 0;
+        END
     END
 
     CLOSE course_cursor;
     DEALLOCATE course_cursor;
 END;
 GO
-
-IF OBJECT_ID('[dbo].[RandomizeOwnedCourseTop10Lecturer]', 'P') IS NOT NULL
-    DROP PROCEDURE [dbo].[RandomizeOwnedCourseTop10Lecturer];
-GO
-
-CREATE PROCEDURE RandomizeOwnedCourseTop10Lecturer
-AS
-BEGIN
-    DECLARE @courseId INT;
-    DECLARE @ownerEmail VARCHAR(256);
-    DECLARE @sharePercentage FLOAT;
-    CREATE TABLE #TopLecturers (email VARCHAR(256));
-    INSERT INTO #TopLecturers (email)
-    SELECT TOP 10 email
-    FROM dbo.lecturer
-    ORDER BY NEWID();
-
-    DECLARE course_cursor CURSOR FOR
-    SELECT id
-    FROM dbo.course;
-
-    OPEN course_cursor;
-
-    FETCH NEXT FROM course_cursor INTO @courseId;
-
-    WHILE @@FETCH_STATUS = 0
-    BEGIN
-        SET @ownerEmail = (SELECT TOP 1 email FROM #TopLecturers ORDER BY NEWID());
-        SET @sharePercentage = ROUND((RAND()), 2);
-
-        INSERT INTO dbo.ownedCourse
-            (ownerEmail, courseId, sharePercentage)
-        VALUES
-            (@ownerEmail, @courseId, @sharePercentage);
-
-        FETCH NEXT FROM course_cursor INTO @courseId;
-    END
-
-    CLOSE course_cursor;
-    DEALLOCATE course_cursor;
-    DROP TABLE #TopLecturers;
-END;
-GO
-
 
 IF OBJECT_ID('[dbo].[RandomizeCourseAnnouncement]', 'P') IS NOT NULL
     DROP PROCEDURE [dbo].[RandomizeCourseAnnouncement];
@@ -448,6 +425,8 @@ BEGIN
     DECLARE @type CHAR(1);
     DECLARE @pos SMALLINT;
     DECLARE @numSection SMALLINT;
+    DECLARE @count INT = 0;
+    DECLARE @maxRecord INT = 250000;
 
     DECLARE course_cursor CURSOR FOR
         SELECT id
@@ -456,22 +435,21 @@ BEGIN
     OPEN course_cursor;
     FETCH NEXT FROM course_cursor INTO @courseId;
 
-    SET @numSection = FLOOR(RAND() * 4 + 1);
+    SET @numSection = FLOOR(RAND() * 5 + 1);
     SET @sectionId = 1;
 
-    WHILE @@FETCH_STATUS = 0 AND @sectionId <= @numSection
+    WHILE @@FETCH_STATUS = 0 AND @count < @maxRecord AND @sectionId <= @numSection
     BEGIN
         SET @title = 'Course Section ' + CAST(@sectionId AS NVARCHAR(64));
         SET @description = 'Description for Course Section ' + CAST(@sectionId AS NVARCHAR(512));
         SET @type = (SELECT TOP 1 type FROM (VALUES ('M'), ('L'), ('E')) AS T(type) ORDER BY NEWID());
-        SET @pos = FLOOR((RAND() * 1000 + 1));
-
         INSERT INTO dbo.courseSection
             (id, courseId, pos, title, description, type)
         VALUES
             (@sectionId, @courseId, @sectionId, @title, @description, @type);
 
         SET @sectionId = @sectionId + 1;
+        SET @count = @count + 1;
     
         IF @sectionId = @numSection + 1
         BEGIN
@@ -486,86 +464,11 @@ BEGIN
 END;
 GO
 
-IF OBJECT_ID('[dbo].[RandomAndAssignNextCourseSections]', 'P') IS NOT NULL
-    DROP PROCEDURE [dbo].[RandomAndAssignNextCourseSections];
-GO
-
-CREATE PROCEDURE RandomAndAssignNextCourseSections
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    DECLARE @courseId INT;
-    DECLARE @sectionId INT = 1;
-    DECLARE @title NVARCHAR(64);
-    DECLARE @description NVARCHAR(512);
-    DECLARE @type CHAR(1);
-    DECLARE @nextSectionId INT;
-
-    -- Cursor for existing courses
-    DECLARE course_cursor CURSOR FOR
-    SELECT id
-    FROM dbo.course;
-
-    OPEN course_cursor;
-    FETCH NEXT FROM course_cursor INTO @courseId;
-
-    WHILE @@FETCH_STATUS = 0
-    BEGIN
-        -- Set the values for the new course section
-        SET @title = 'Course Section ' + CAST(@sectionId AS NVARCHAR(64));
-        SET @description = 'Description for Course Section ' + CAST(@sectionId AS NVARCHAR(512));
-        SET @type = (SELECT TOP 1 type FROM (VALUES ('M'), ('L'), ('E')) AS T(type) ORDER BY NEWID());
-
-        -- Insert the new course section
-        INSERT INTO dbo.courseSection
-            (id, courseId, nextCourseSectionId, title, description, type)
-        VALUES
-            (@sectionId, @courseId, NULL, @title, @description, @type);
-
-        -- Increment the section ID for the next insertion
-        SET @sectionId = @sectionId + 1;
-
-        FETCH NEXT FROM course_cursor INTO @courseId;
-    END
-
-    CLOSE course_cursor;
-    DEALLOCATE course_cursor;
-
-    -- Assign random nextCourseSectionId
-    DECLARE section_cursor CURSOR FOR
-    SELECT id, courseId
-    FROM dbo.courseSection;
-
-    OPEN section_cursor;
-    FETCH NEXT FROM section_cursor INTO @sectionId, @courseId;
-
-    WHILE @@FETCH_STATUS = 0
-    BEGIN
-        -- Select a random next section within the same course
-        SELECT TOP 1 @nextSectionId = id
-        FROM dbo.courseSection
-        WHERE courseId = @courseId AND id <> @sectionId
-        ORDER BY NEWID();
-
-        -- Update the course section with the random nextCourseSectionId
-        UPDATE dbo.courseSection
-        SET nextCourseSectionId = @nextSectionId
-        WHERE id = @sectionId AND courseId = @courseId;
-
-        FETCH NEXT FROM section_cursor INTO @sectionId, @courseId;
-    END
-
-    CLOSE section_cursor;
-    DEALLOCATE section_cursor;
-END;
-GO
-
 IF OBJECT_ID('[dbo].[RandomizeCourseLesson]', 'P') IS NOT NULL
     DROP PROCEDURE [dbo].[RandomizeCourseLesson];
 GO
 
-CREATE PROCEDURE RandomizeCourseLesson
+CREATE OR ALTER PROCEDURE RandomizeCourseLesson
 AS
 BEGIN
     DECLARE @id INT;
@@ -576,7 +479,7 @@ BEGIN
     DECLARE course_cursor CURSOR FOR
     SELECT cs.id, cs.courseId
     FROM dbo.courseSection cs
-        JOIN dbo.course c ON cs.courseId = c.id;
+    WHERE cs.type = 'L';
 
     OPEN course_cursor;
     FETCH NEXT FROM course_cursor INTO @id, @courseId;
@@ -584,7 +487,7 @@ BEGIN
     WHILE @@FETCH_STATUS = 0
     BEGIN
         SET @isFree = CASE WHEN RAND() > 0.5 THEN 1 ELSE 0 END;
-        SET @durationInMinutes = CAST(RAND() * 60 + 1 AS TINYINT);
+        SET @durationInMinutes = CAST(RAND() * 55 + 5 AS TINYINT);
 
         INSERT INTO dbo.courseLesson
             (id, courseId, isFree, durationInMinutes)
@@ -611,8 +514,6 @@ BEGIN
     DECLARE @id INT;
     DECLARE @courseId INT;
     DECLARE @exerciseType CHAR(1);
-    DECLARE @numEx INT;
-    DECLARE @i INT;
 
     DECLARE course_section_cursor CURSOR FOR
     SELECT id, courseId
@@ -766,17 +667,12 @@ BEGIN
         FROM [dbo].[learner]
     );
 
-    DECLARE @StartDate DATE = '2020-01-01';
+    DECLARE @StartDate DATE = '2021-01-01';
     DECLARE @EndDate DATE = GETDATE();
 
     SELECT TOP 1
         @chatId = id
     FROM [dbo].[chat]
-    ORDER BY NEWID();
-    
-    SELECT TOP 1
-        @senderId = id          
-    FROM #RandomIds
     ORDER BY NEWID();
 
     SET @num_records = FLOOR(RAND() * 5 + 1);
@@ -789,23 +685,21 @@ BEGIN
                     @chatId = id
                 FROM [dbo].[chat]
                 ORDER BY NEWID();
-                
-                SELECT TOP 1
-                    @senderId = id          
-                FROM #RandomIds
-                ORDER BY NEWID();
 
                 SET @num_records = FLOOR(RAND() * 5 + 1);
                 SET @i = 0;
             END
 
+            SELECT TOP 1
+                @senderId = id          
+            FROM #RandomIds
+            ORDER BY NEWID();
 
             SET @messageContent = SUBSTRING(CONVERT(VARCHAR(50), NEWID()), 0, 9);
-            
             SET @createdAt = DATEADD(day, ABS(CHECKSUM(NEWID())) % (DATEDIFF(day, @StartDate, @EndDate) + 1), @StartDate);
 
             INSERT INTO [dbo].[message] VALUES ( @senderId, @chatId, @createdAt, @messageContent);
-            
+
             SET @counter = @counter + 1;
             SET @i = @i + 1;
     END;
@@ -820,7 +714,7 @@ BEGIN
     SET NOCOUNT ON;
 
     DECLARE @counter INT = 0;
-    DECLARE @max_records INT = 100000;
+    DECLARE @max_records INT = 120000;
     DECLARE @senderId VARCHAR(256);
     DECLARE @receiverId VARCHAR(256);
     DECLARE @title NVARCHAR(64);
@@ -848,13 +742,8 @@ BEGIN
         FROM [dbo].[learner]
     );
 
-    DECLARE @StartDate DATE = '2020-01-01';
+    DECLARE @StartDate DATE = '2021-01-01';
     DECLARE @EndDate DATE = GETDATE();
-
-    SELECT TOP 1
-        @receiverId = id
-    FROM #RandomIds
-    ORDER BY NEWID();
 
     SELECT TOP 1
         @senderId = id
@@ -867,10 +756,6 @@ BEGIN
     BEGIN 
             IF @i = @num_records
             BEGIN
-                SELECT TOP 1
-                    @receiverId = id
-                FROM #RandomIds
-                ORDER BY NEWID();
 
                 SELECT TOP 1
                     @senderId = id
@@ -881,6 +766,11 @@ BEGIN
                 SET @i = 0;
             END
 
+            SELECT TOP 1
+                @receiverId = id
+            FROM #RandomIds
+            ORDER BY NEWID();
+            
             SET @content = N'Thông báo tin nhắn được gửi từ ' + @senderId;
             SET @title = N'Tin nhắn mới từ ' + @senderId;
             SET @createdAt = DATEADD(day, ABS(CHECKSUM(NEWID())) % (DATEDIFF(day, @StartDate, @EndDate) + 1), @StartDate);
@@ -908,21 +798,24 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    DECLARE @learnerEmail VARCHAR(256);
+    DECLARE @learnerId VARCHAR(256);
     DECLARE @courseId INT;
     DECLARE @courseSectionId INT;
     DECLARE @completionPercentage FLOAT;
     DECLARE @type CHAR(1);
+    DECLARE @count INT = 0;
+    DECLARE @numRecord INT = 120000;
+
 
     DECLARE enrolled_cursor CURSOR FOR
-    SELECT learnerEmail, courseId
+    SELECT learnerId, courseId
     FROM dbo.enrolledCourse;
 
     OPEN enrolled_cursor;
 
-    FETCH NEXT FROM enrolled_cursor INTO @learnerEmail, @courseId;
+    FETCH NEXT FROM enrolled_cursor INTO @learnerId, @courseId;
 
-    WHILE @@FETCH_STATUS = 0
+    WHILE @@FETCH_STATUS = 0 AND @count < @numRecord
     BEGIN
         DECLARE courseSection_cursor CURSOR FOR
         SELECT id
@@ -936,17 +829,21 @@ BEGIN
         WHILE @@FETCH_STATUS = 0
         BEGIN
             SET @completionPercentage = CAST(RAND(CHECKSUM(NEWID())) AS FLOAT);
-            SET @type = CASE WHEN RAND(CHECKSUM(NEWID())) < 0.5 THEN 'S' ELSE 'E' END;
+            SET @type = (SELECT TOP 1 type FROM 
+                            (VALUES ('E'), ('E'), ('S')) AS T(type)
+                            ORDER BY NEWID());
 
             BEGIN TRY
                 INSERT INTO dbo.courseSectionProgress
-                (learnerEmail, courseId, courseSectionId, completionPercentage, type)
+                (learnerId, courseId, courseSectionId, completionPercentage, type)
                 VALUES
-                (@learnerEmail, @courseId, @courseSectionId, @completionPercentage, @type);
+                (@learnerId, @courseId, @courseSectionId, @completionPercentage, @type);
             END TRY
             BEGIN CATCH
-                PRINT 'Skipping duplicate entry for learnerEmail ' + ISNULL(@learnerEmail, 'NULL') + ', courseId ' + CAST(@courseId AS NVARCHAR(10)) + ', courseSectionId ' + CAST(@courseSectionId AS NVARCHAR(10));
+                PRINT 'Skipping duplicate entry for learnerId ' + ISNULL(@learnerId, 'NULL') + ', courseId ' + CAST(@courseId AS NVARCHAR(10)) + ', courseSectionId ' + CAST(@courseSectionId AS NVARCHAR(10));
             END CATCH;
+
+            SET @count = @count + 1;
 
             FETCH NEXT FROM courseSection_cursor INTO @courseSectionId;
         END;
@@ -954,7 +851,7 @@ BEGIN
         CLOSE courseSection_cursor;
         DEALLOCATE courseSection_cursor;
 
-        FETCH NEXT FROM enrolled_cursor INTO @learnerEmail, @courseId;
+        FETCH NEXT FROM enrolled_cursor INTO @learnerId, @courseId;
     END;
 
     CLOSE enrolled_cursor;
@@ -966,24 +863,25 @@ IF OBJECT_ID('[dbo].[RandomizeCourseExerciseProgress]', 'P') IS NOT NULL
     DROP PROCEDURE [dbo].[RandomizeCourseExerciseProgress];
 GO
 
-CREATE PROCEDURE RandomizeCourseExerciseProgress
+CREATE OR ALTER PROCEDURE RandomizeCourseExerciseProgress
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    DECLARE @learnerEmail VARCHAR(256);
+    DECLARE @learnerId VARCHAR(256);
     DECLARE @courseId INT;
     DECLARE @courseSectionId INT;
     DECLARE @savedTextSolution NVARCHAR(MAX);
     DECLARE @grade FLOAT;
 
     DECLARE progress_cursor CURSOR FOR
-    SELECT learnerEmail, courseId, courseSectionId
-    FROM dbo.courseSectionProgress;
+    SELECT learnerId, courseId, courseSectionId
+    FROM dbo.courseSectionProgress
+    WHERE type = 'E';
 
     OPEN progress_cursor;
 
-    FETCH NEXT FROM progress_cursor INTO @learnerEmail, @courseId, @courseSectionId;
+    FETCH NEXT FROM progress_cursor INTO @learnerId, @courseId, @courseSectionId;
 
     WHILE @@FETCH_STATUS = 0
     BEGIN
@@ -991,17 +889,12 @@ BEGIN
 
         SET @grade = ROUND(RAND(CHECKSUM(NEWID())) * 10, 2);
 
-        BEGIN TRY
-            INSERT INTO dbo.courseExerciseProgress
-            (learnerEmail, courseId, courseSectionId, savedTextSolution, grade)
+        INSERT INTO dbo.courseExerciseProgress
+        (learnerId, courseId, courseSectionId, savedTextSolution, grade)
         VALUES
-            (@learnerEmail, @courseId, @courseSectionId, @savedTextSolution, @grade);
-        END TRY
-        BEGIN CATCH
-            PRINT 'Skipping duplicate entry for learnerEmail ' + @learnerEmail + ', courseId ' + CAST(@courseId AS NVARCHAR(10)) + ', courseSectionId ' + CAST(@courseSectionId AS NVARCHAR(10));
-        END CATCH;
-
-        FETCH NEXT FROM progress_cursor INTO @learnerEmail, @courseId, @courseSectionId;
+        (@learnerId, @courseId, @courseSectionId, @savedTextSolution, @grade);
+           
+        FETCH NEXT FROM progress_cursor INTO @learnerId, @courseId, @courseSectionId;
     END;
 
     CLOSE progress_cursor;
@@ -1023,16 +916,20 @@ BEGIN
     DECLARE @courseId INT;
     DECLARE @sectionId INT;
     DECLARE @counter INT = 1;
+    DECLARE @i INT = 0;
+    DECLARE @numFile INT;
 
     DECLARE courseSection_cursor CURSOR FOR
     SELECT id, courseId
     FROM dbo.[courseSection];
 
+    SET @numFile = FLOOR(RAND() * 2) + 1;
+
     OPEN courseSection_cursor;
 
     FETCH NEXT FROM courseSection_cursor INTO @sectionId, @courseId;
 
-    WHILE @@FETCH_STATUS = 0
+    WHILE @@FETCH_STATUS = 0 AND @i < @numFile
     BEGIN
         BEGIN TRY
             INSERT INTO dbo.[file] (name, path)
@@ -1045,12 +942,19 @@ BEGIN
             (id, courseSectionId, courseId)
             VALUES
             (@fileId, @sectionId, @courseId);
+
+            SET @i = @i + 1;
         END TRY
         BEGIN CATCH
             PRINT 'Skipping duplicate file ID ' + CAST(@fileId AS NVARCHAR(10));
         END CATCH;
 
-        FETCH NEXT FROM courseSection_cursor INTO @sectionId, @courseId;
+        IF @i = @numFile
+        BEGIN
+            SET @i = 0;
+            SET @numFile = FLOOR(RAND() * 2) + 1;
+            FETCH NEXT FROM courseSection_cursor INTO @sectionId, @courseId;
+        END
     END;
 
     CLOSE courseSection_cursor;
@@ -1071,6 +975,9 @@ BEGIN
     DECLARE @courseExerciseId INT;
     DECLARE @courseId INT;
     DECLARE @counter INT;
+    DECLARE @i INT = 0;
+    DECLARE @numFile INT;
+
 
     SELECT @counter = count(*) FROM [dbo].[file];
 
@@ -1078,11 +985,13 @@ BEGIN
     SELECT id, courseId
     FROM dbo.[courseExercise];
 
+    SET @numFile = FLOOR(RAND() * 2) + 1;
+
     OPEN courseExercise_cursor;
 
     FETCH NEXT FROM courseExercise_cursor INTO @courseExerciseId, @courseId;
 
-    WHILE @@FETCH_STATUS = 0
+    WHILE @@FETCH_STATUS = 0 AND @i < @numFile
     BEGIN
         BEGIN TRY
             INSERT INTO dbo.[file] (name, path)
@@ -1095,12 +1004,19 @@ BEGIN
             (id, courseExerciseId, courseId)
         VALUES
             (@fileId, @courseExerciseId, @courseId);
+
+        SET @i = @i + 1;
         END TRY
         BEGIN CATCH
             PRINT 'Skipping duplicate file ID ' + CAST(@fileId AS NVARCHAR(10));
         END CATCH;
 
-        FETCH NEXT FROM courseExercise_cursor INTO @courseExerciseId, @courseId;
+        IF @i = @numFile
+        BEGIN
+            SET @i = 0;
+            SET @numFile = FLOOR(RAND() * 2) + 1;
+            FETCH NEXT FROM courseExercise_cursor INTO @courseExerciseId, @courseId;
+        END
     END;
 
     CLOSE courseExercise_cursor;
@@ -1113,125 +1029,77 @@ IF OBJECT_ID('[dbo].[RandomizeTransactionData]', 'P') IS NOT NULL
     DROP PROCEDURE [dbo].[RandomizeTransactionData];
 GO
 
-CREATE PROCEDURE RandomizeTransactionData
+CREATE OR ALTER PROCEDURE RandomizeTransactionData
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    DECLARE @max_records INT = 100000;
+    DECLARE @max_records INT = 120000;
     DECLARE @counter INT = 0;
+    DECLARE @courseId INT;
+    DECLARE @initiatorId INT;
+    DECLARE @paidAmount MONEY;
+    DECLARE @discountPercentage FLOAT;
+    DECLARE @sharePercentage FLOAT;
+    DECLARE @createdAt DATETIME;
+    DECLARE @StartDate DATE = '2021-01-01';
+    DECLARE @EndDate DATE = GETDATE();
 
-    CREATE TABLE #ValidCourseIds
-    (
-        courseId INT PRIMARY KEY
-    );
+    DECLARE enrolledCourse_cursor CURSOR FOR
+    SELECT learnerId, courseId
+    FROM dbo.[enrolledCourse];
 
-    INSERT INTO #ValidCourseIds
-        (courseId)
-    SELECT id
-    FROM dbo.course;
+    OPEN enrolledCourse_cursor;
 
-    WHILE @counter < @max_records
+    FETCH NEXT FROM enrolledCourse_cursor INTO @initiatorId, @courseId;
+
+    WHILE  @@FETCH_STATUS = 0 AND @counter < @max_records
     BEGIN
-        DECLARE @courseId INT;
-        DECLARE @initiatorId INT;
-        DECLARE @receiverId INT;
-        DECLARE @paidAmount MONEY;
-        DECLARE @taxPercentage FLOAT;
-        DECLARE @transactionFee MONEY;
-        DECLARE @discountPercentage FLOAT;
-        DECLARE @netAmount MONEY;
-        DECLARE @sharePercentage FLOAT;
-        DECLARE @revenue MONEY;
+        SET @createdAt = DATEADD(day, ABS(CHECKSUM(NEWID())) % (DATEDIFF(day, @StartDate, @EndDate) + 1), @StartDate);
+        SET @paidAmount = (SELECT price FROM [dbo].[course] WHERE id = @courseId)
+        SET @discountPercentage = ROUND(RAND() * 1, 2);  
 
-        SELECT TOP 1
-            @courseId = courseId
-        FROM #ValidCourseIds
-        ORDER BY NEWID();
-
-        print @courseId
-
-        SELECT TOP 1
-            @initiatorId = learnerId
-        FROM dbo.enrolledCourse
-        WHERE courseId = @courseId
-        ORDER BY NEWID();
-
-        SELECT TOP 1
-            @receiverId = ownerId
-        FROM dbo.ownedCourse
-        WHERE courseId = @courseId
-        ORDER BY NEWID();
-
-        IF EXISTS (
-                SELECT 1
-        FROM dbo.ownedCoupon
-        WHERE ownerId = @receiverId
-            )
-            BEGIN
-            SELECT @discountPercentage = COALESCE((
-                    SELECT discountPercentage
-                    FROM dbo.coupon
-                    WHERE id IN (
-                        SELECT couponId
-                        FROM dbo.ownedCoupon
-                        WHERE ownerEmail = @receiverEmail
-                    )
-                ), 0);
-        END
-        ELSE
-            BEGIN
-            SET @discountPercentage = 0;
-        END
-
-        SET @sharePercentage = 1 - @discountPercentage;
-
-        SET @paidAmount = CAST(ABS(CHECKSUM(NEWID())) % 100000 + 1000 AS MONEY);
-        SET @taxPercentage = CAST(RAND() AS FLOAT);
-        SET @transactionFee = CAST(ABS(CHECKSUM(NEWID())) % 10 AS MONEY);
-
-        SET @netAmount = CASE
-                            WHEN @paidAmount - @transactionFee - @taxPercentage * @paidAmount < 0
-                            THEN 0 
-                            ELSE @paidAmount - @transactionFee - @taxPercentage * @paidAmount
-                        END;
-        SET @revenue = @netAmount * @sharePercentage;
 
         INSERT INTO dbo.[transaction]
-            (initiatorId, receiverId, courseId, createdAt, paidAmount, taxPercentage, transactionFee, sharePercentage, discountPercentage, netAmount, revenue)
-        VALUES
-            (@initiatorId, @receiverId, @courseId, GETDATE(), @paidAmount, @taxPercentage, @transactionFee, @sharePercentage, @discountPercentage, @netAmount, @revenue);
+            (initiatorId, receiverId, courseId, paidAmount, taxPercentage, transactionFee, sharePercentage, discountPercentage, createdAt)
+        SELECT @initiatorId, ownerId, @courseId, @paidAmount, 0.1, 10, sharePercentage, @discountPercentage, @createdAt
+	    FROM [dbo].[ownedCourse]
+	    WHERE courseId = @courseId
+
 
         SET @counter = @counter + 1;
+        FETCH NEXT FROM enrolledCourse_cursor INTO @initiatorId, @courseId;
     END;
 
-    DROP TABLE #ValidCourseIds;
+    CLOSE enrolledCourse_cursor;
+    DEALLOCATE enrolledCourse_cursor;
 END;
 GO
 
+
 EXEC InsertCourseCategory;
-exec RandomizeRegion;
-exec RandomizeBankAccount;
--- -- Exec RandomizeCourseDescriptionDetail;
------------exec RandomizeEnrolledCourseByCourse;
--- -- exec RandomizeCourseReview;
-exec RandomizeOwnedCourse;
-exec RandomizeCourseAnnouncement;
 
-exec RandomCourseSections;
--- -- exec RandomAndAssignNextCourseSections; -- nay chua fix 
--- -- exec RandomizeCourseLesson;
-exec RandomizeCourseExercise;
--- -- exec RandomizeCourseSectionProgress;
+EXEC RandomizeBankAccount;
+EXEC RandomizeCourseDescriptionDetail;
+EXEC RandomizeEnrolledCourse;
+EXEC RandomizeCourseReview;
+EXEC RandomizeOwnedCourse;
+EXEC RandomizeCourseAnnouncement;
 
-exec RandomizeCourseSectionFile;
 
--- -- exec RandomizeCourseExerciseProgress;
-exec RandomizeCourseExerciseSolutionFile;
+EXEC RandomCourseSections;
+EXEC RandomizeCourseLesson;
+EXEC RandomizeCourseExercise;
+EXEC RandomizeCourseSectionProgress;
+EXEC RandomizeCourseExerciseProgress;
 
-exec RandomizeCourseChat;
-exec RandomizeCourseChatMember;
-exec RandomizeMessage;
-exec RandomizeNotification;
 
-exec RandomizeTransactionData;
+EXEC RandomizeCourseSectionFile;
+EXEC RandomizeCourseExerciseSolutionFile;
+
+EXEC RandomizeCourseChat;
+EXEC RandomizeCourseChatMember;
+EXEC RandomizeMessage;
+EXEC RandomizeNotification;
+
+EXEC RandomizeTransactionData;

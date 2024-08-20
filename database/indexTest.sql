@@ -14,7 +14,7 @@ EXEC selectUserByCred @email, @password
 
 
 --IDX2
-EXEC searchCourses '[5-8]', null, 0, null, null, null, null, null
+EXEC searchCourses '[5]', null, 0, null, null, null, null, null
 
 --IDX3
 DECLARE @learnerId INT = FLOOR((SELECT MAX(id) + MIN(id) FROM [dbo].[user] where email like '%learner%') / 2) + 3;
