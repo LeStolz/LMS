@@ -38,6 +38,7 @@ const formSchema = z.object({
     .max(120, {
       message: "Subtitle must not be longer than 120.",
     }),
+  
 });
 
 export default function Component() {
@@ -50,6 +51,9 @@ export default function Component() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
+      console.log(values);
+      // const id = await getSessionId();
+      // setUserId(id);
       const course = await createCourse(values);
       router.push(`/courses/${course.id}`);
 
@@ -66,7 +70,7 @@ export default function Component() {
         Think about what you would like to teach in your course.
       </p>
       <p className="text-muted-foreground pb-4">
-        Don't worry, you can change this later.
+        Dont worry, you can change this later.
       </p>
 
       <Form {...form}>

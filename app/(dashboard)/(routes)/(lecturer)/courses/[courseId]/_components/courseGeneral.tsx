@@ -18,6 +18,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useFormContext } from "react-hook-form";
 import { CourseCategories } from "./courseCategories";
+import React from "react";
 
 export default function CourseGeneral() {
   const form = useFormContext();
