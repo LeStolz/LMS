@@ -1259,7 +1259,6 @@ BEGIN TRANSACTION
 	FROM [dbo].[ownedCourse]
 	WHERE courseId = @courseId
 
-
 	UPDATE [dbo].[bankAccount]
 	SET inAppBalance = inAppBalance - @paidAmount
 	WHERE ownerId = @learnerId
