@@ -1176,23 +1176,29 @@ BEGIN TRANSACTION
 	SET XACT_ABORT ON
 	SET NOCOUNT ON
 
-	DECLARE @courseId INT = (SELECT courseId FROM inserted)
-
 	DECLARE @date DATE = DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
 
-	IF (EXISTS(
-		SELECT * FROM [dbo].[monthlyCourseIncome]
-		WHERE courseId = @courseId AND DATEFROMPARTS(YEAR(date), MONTH(date), 1) = @date
-	))
-	BEGIN
-		UPDATE [dbo].[monthlyCourseIncome]
-		SET income += (SELECT revenue FROM inserted)
-		WHERE courseId = @courseId AND DATEFROMPARTS(YEAR(date), MONTH(date), 1) = @date
-	END
-	ELSE
-	BEGIN
-		INSERT INTO [dbo].[monthlyCourseIncome](courseId, date, income)
-		VALUES(@courseId, @date, (SELECT revenue FROM inserted))
-	END
+    UPDATE mci
+    SET mci.income += i.totalRevenue
+    FROM [dbo].[monthlyCourseIncome] mci
+    JOIN (
+        SELECT courseId, SUM(revenue) AS totalRevenue
+        FROM inserted
+        GROUP BY courseId
+    ) i ON mci.courseId = i.courseId
+    WHERE DATEFROMPARTS(YEAR(mci.date), MONTH(mci.date), 1) = @date
+
+    INSERT INTO [dbo].[monthlyCourseIncome](courseId, date, income)
+    SELECT i.courseId, @date, i.totalRevenue
+    FROM (
+        SELECT courseId, SUM(revenue) AS totalRevenue
+        FROM inserted
+        GROUP BY courseId
+    ) i
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM [dbo].[monthlyCourseIncome] mci
+        WHERE mci.courseId = i.courseId AND DATEFROMPARTS(YEAR(mci.date), MONTH(mci.date), 1) = @date
+    )
 COMMIT TRANSACTION
 GO
