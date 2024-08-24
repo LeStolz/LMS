@@ -17,10 +17,9 @@ CREATE TABLE [dbo].[courseSectionFileFixed]
 		FOREIGN KEY(courseId, courseSectionId) REFERENCES [dbo].[courseSection](courseId, id)
 		ON DELETE CASCADE,
 
-	CONSTRAINT [pk_courseSectionFileFixed] PRIMARY KEY(id)
+	CONSTRAINT [pk_courseSectionFileFixed] PRIMARY KEY(courseId, courseSectionId, id)
 );
 GO
-
 
 IF OBJECT_ID('[dbo].[courseReviewFixed]', 'U') IS NOT NULL
 	DROP TABLE [dbo].[courseReviewFixed]
@@ -37,7 +36,6 @@ CREATE TABLE [dbo].[courseReviewFixed]
     name NVARCHAR(128) NOT NULL,
 
     CONSTRAINT [Fixed User email format is invalid.] CHECK(email LIKE '%_@__%.__%'),
-	CONSTRAINT [Fixed A user with this email already exists.] UNIQUE(email),
 	CONSTRAINT [Fixed User name is required.] CHECK(LEN(name) > 0),
 
 	CONSTRAINT [Fixed Course review created at must be before today.] CHECK(createdAt <= GETDATE()),
@@ -47,6 +45,6 @@ CREATE TABLE [dbo].[courseReviewFixed]
 	CONSTRAINT [fk_courseReviewFixed_course] FOREIGN KEY(courseId) REFERENCES [dbo].[course](id)
 	ON DELETE CASCADE,
 
-	CONSTRAINT [pk_courseReviewFixed] PRIMARY KEY(learnerId, courseId, createdAt)
+	CONSTRAINT [pk_courseReviewFixed] PRIMARY KEY(courseId, learnerId, createdAt)
 );
 GO

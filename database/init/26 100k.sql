@@ -386,15 +386,13 @@ BEGIN
             FROM dbo.course
             WHERE id = @courseId;
             
-
-            SET @createdAt = DATEADD(day, ABS(CHECKSUM(NEWID())) % (DATEDIFF(day, @courseCreatedAt, @EndDate) + 1), @courseCreatedAt);
-
             SET @title = N'Thông báo';
             SET @content = N'Chào mừng đến với lớp ' + @subtitle;
+
             INSERT INTO dbo.courseAnnouncement
                 (senderId, courseId, createdAt, title, content)
             VALUES
-                (@senderId, @courseId, @createdAt, @title, @content);
+                (@senderId, @courseId, @courseCreatedAt, @title, @content);
         END TRY
 
         BEGIN CATCH

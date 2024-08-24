@@ -1082,8 +1082,6 @@ COMMIT TRANSACTION
 GO
 
 
-
-
 CREATE OR ALTER PROCEDURE [dbo].[searchCourses]
 	@title NVARCHAR(64),
 	@status CHAR(1),
@@ -1105,7 +1103,10 @@ BEGIN TRANSACTION
     FROM OPENJSON(@categoryIds)
     WITH (value INT '$')
 
-	SELECT *, (c.learnerCount / c.visitorCount) as conversionRate FROM [dbo].[course] c
+	SELECT *, (CASE 
+            WHEN c.visitorCount = 0 THEN 0
+            ELSE c.learnerCount / c.visitorCount 
+        END) AS conversionRate FROM [dbo].[course] c
 	WHERE title LIKE @title + '%' AND (@status IS NULL OR status = @status)
 	AND (@lecturerId IS NULL OR EXISTS(
 		SELECT * FROM [dbo].[ownedCourse] oc
@@ -1118,18 +1119,15 @@ BEGIN TRANSACTION
 	AND NOT EXISTS(
 		SELECT * FROM #categoryIds
 		EXCEPT
-		SELECT * FROM [dbo].[courseCategory] cc
+		SELECT categoryId FROM [dbo].[courseCategory] cc
 		WHERE cc.courseId = c.id
 	)
-	ORDER BY (
-		CASE @orderBy
-			WHEN 'L' THEN c.learnerCount
-			WHEN 'C' THEN c.createdAt
-			WHEN 'R' THEN c.rating
-			WHEN 'P' THEN -c.price
-			WHEN 'M' THEN -c.minutesToComplete
-		END
-	) DESC
+	ORDER BY 
+        (CASE WHEN @orderBy = 'L' THEN learnerCount END) DESC,
+        (CASE WHEN @orderBy = 'C' THEN createdAt END) DESC,
+        (CASE WHEN @orderBy = 'R' THEN rating END) DESC,
+        (CASE WHEN @orderBy = 'P' THEN price END) ASC,
+        (CASE WHEN @orderBy = 'M' THEN minutesToComplete END) DESC
 	OFFSET @offset ROWS
 	FETCH NEXT 40 ROWS ONLY
 
@@ -1382,7 +1380,7 @@ BEGIN TRANSACTION
 	SET XACT_ABORT ON
 	SET NOCOUNT ON
 
-	SELECT * FROM [dbo].[courseAnnouncement]
+	SELECT courseId FROM [dbo].[courseAnnouncement]
 	ORDER BY createdAt DESC
 	OFFSET @offset ROWS
 	FETCH NEXT 40 ROWS ONLY
