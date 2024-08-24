@@ -32,8 +32,8 @@ import * as z from "zod";
 
 const formSchema = z.object({
   courseId: z.number(),
-  title: z.string(),
-  description: z.string(),
+  title: z.string().nonempty("Title is required"),
+  description: z.string().nonempty("Description is required"),
   pos: z.number(),
   type: z.enum(["E", "Q"]).optional(),
 });
