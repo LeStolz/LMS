@@ -11,11 +11,18 @@ import Link from "next/link";
 import { formatError } from "@/lib/utils";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Course, CourseCategories } from "@/types/course";
+import {
+  Course,
+  CourseCategories,
+  CourseDetails,
+  CourseSection,
+} from "@/types/course";
 import CourseGeneral from "./courseGeneral";
 import { useRouter } from "next/navigation";
-import { updateCourse } from "@/app/api/course/course";
+import { insertCourseSection, updateCourse } from "@/app/api/course/[courseId]/route";
 import CourseMedia from "./courseMedia";
+import CourseResource from "./courseResource";
+import CourseChapter from "./courseSection";
 
 const formSchema = z.object({
   title: z
@@ -42,12 +49,43 @@ const formSchema = z.object({
     message: "Price must be non-negative.",
   }),
   categoryIds: z.any(),
+  sections: z.array(
+    z.object({
+      title: z.string().min(1,{
+        message: "Title is required.",
+      }),
+      pos: z.number(),
+      description: z.string().min(1,{
+        message: "Description is required.",
+      })
+      // lesson: z.array(
+      //   z.object({
+      //     id: z.number(),
+      //     isFree: z.boolean(),
+      //     durationInMinutes: z.number(),
+      //   })
+      // ),
+      // exercise: z.array(
+      //   z.object({
+      //     id: z.number(),
+      //     type: z.enum(["Q", "E"]),
+      //     exerciseSolutionFile: z.array(
+      //       z.object({
+      //         id: z.number(),
+      //         url: z.string(),
+      //         name: z.string(),
+      //       })
+      //     ),
+      //   })
+      // ),
+    })
+  ).optional(),
 });
 
 export default function Component({
   course,
 }: {
-  course: Course & CourseCategories;
+  course: Course & CourseCategories & CourseSection;
 }) {
   const router = useRouter();
   const form = useForm<z.infer<typeof formSchema>>({
@@ -63,12 +101,24 @@ export default function Component({
           name: category.title,
         };
       }),
+      sections: course.sections.map((section) => {
+        return {
+          value: section.id,
+          title: section.title,
+          pos: section.pos,
+          description: section.description ?? undefined,
+        };
+      }),
     },
   });
   const { isSubmitting, isValid } = form.formState;
   const [error, setError] = useState<string | undefined>(undefined);
 
+  console.log('course : ', course);
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
+
+    console.log('value: ' , values);
     try {
       await updateCourse({
         ...values,
@@ -84,6 +134,20 @@ export default function Component({
         id: course.id,
         updatedAt: new Date(),
       });
+
+
+      if(values.sections && values.sections.length > 0) {
+        await Promise.all(
+          values.sections.map(async (section) => {
+              await insertCourseSection({
+                courseId: course.id,
+                title: section.title,
+                pos: section.pos,
+                description: section.description,
+              });
+          })
+        );
+      }
 
       toast.success("Course saved!");
 
@@ -104,6 +168,7 @@ export default function Component({
               <TabsTrigger value="media">Media</TabsTrigger>
               <TabsTrigger value="sections">Sections</TabsTrigger>
               <TabsTrigger value="billings">Billings</TabsTrigger>
+              <TabsTrigger value="resource">Resources</TabsTrigger>
             </TabsList>
             <TabsContent value="general">
               <CourseGeneral />
@@ -111,8 +176,14 @@ export default function Component({
             <TabsContent value="media">
               <CourseMedia onSubmit={onSubmit} />
             </TabsContent>
-            <TabsContent value="sections">Sections</TabsContent>
+            <TabsContent value="sections">
+              <CourseChapter sections={course.sections} />
+            </TabsContent>
             <TabsContent value="billings">Billings</TabsContent>
+            <TabsContent value="resource">
+              {/* <CourseResource onSubmit={onSubmit} /> */}
+              resource
+            </TabsContent>
           </Tabs>
           <div>
             <div className="flex flex-row gap-2">

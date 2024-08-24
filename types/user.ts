@@ -56,6 +56,7 @@ export type UserWithDetails = UserWithPassword & {
   cardholderName?: string;
   zip?: string;
   ownerId?: number;
+  regionId?: number | string;
 
   dob?: Date;
   gender?: "M" | "F";
