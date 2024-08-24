@@ -16,9 +16,16 @@ import {
   File,
   LoaderCircleIcon,
   Pencil,
+  Plus,
   PlusCircle,
   Trash,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { UploadDropzone } from "@/lib/uploadthing";
 import { FileRouter } from "uploadthing/types";
 import { Button } from "@/components/ui/button";
@@ -29,10 +36,14 @@ import { Input } from "@/components/ui/input";
 import { ChapterList } from "./chapter/chapter-list";
 import { updateCourseSection } from "@/app/api/course/[courseId]/route";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
-export default function CourseSection({sections} : {sections : any[]}) {
+export default function CourseSection({ sections }: { sections: any[] }) {
+  let courseId: any;
   const form = useFormContext();
-  const courseId = sections[0].courseId;
+  if (sections.length !== 0) {
+    courseId = sections[0].courseId;
+  }
   const router = useRouter();
   const [isEditing, setIsEditing] = React.useState(false);
   const toggleEditing = () => setIsEditing((prev) => !prev);
@@ -52,11 +63,18 @@ export default function CourseSection({sections} : {sections : any[]}) {
     appendSection({ pos, title: "", description: "" });
   };
 
-  const onReoder = async (updateData: { id: number; pos: number; description : string;title : string  }[]) => {
+  const onReoder = async (
+    updateData: {
+      id: number;
+      pos: number;
+      description: string;
+      title: string;
+    }[]
+  ) => {
     try {
-      console.log('updateData : ', updateData);
+      console.log("updateData : ", updateData);
       for (const data of updateData) {
-        console.log('data : ', data);
+        console.log("data : ", data);
         await updateCourseSection({
           courseId: courseId,
           id: data.id,
@@ -73,11 +91,11 @@ export default function CourseSection({sections} : {sections : any[]}) {
     } finally {
       form.setValue("sections", sectionField);
     }
-  }
+  };
 
   const onEdit = (id: number) => {
-    router.push(`/courses/${courseId}/${id}`);
-  }
+    router.push(`/courses/${courseId}/section/${id}`);
+  };
 
   console.log(sectionField);
 
@@ -85,80 +103,40 @@ export default function CourseSection({sections} : {sections : any[]}) {
     <div className="mt-6 border bg-slate-200 dark:bg-slate-800 rounded-md p-4">
       <div className="font-medium flex items-center justify-between">
         Section
-        <Button onClick={toggleEditing} variant="default" type="button">
-          {isEditing ? (
-            <>Cancel</>
-          ) : (
-            <>
-              <Pencil size={24} />
-              Edit Section
-            </>
-          )}
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="overflow-hidden rounded-full"
+            >
+              <Plus className="h-5 w-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="right">
+            <DropdownMenuItem>Add Modules</DropdownMenuItem>
+            <DropdownMenuItem>Add Lessons</DropdownMenuItem>
+            <DropdownMenuItem>Add Exercises</DropdownMenuItem>
+            <DropdownMenuItem>Add Files</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-      {!isEditing && (
-        <ChapterList
-        onEdit={onEdit}
-        onReoder={onReoder}
-        items={sections}
-        />
-      )}
-      {isEditing && (
-        <div className="mt-4">
-          {sectionField.map((section, index) => (
-            <div key={section.id} className="space-y-4">
-              <FormField
-                control={form.control}
-                name={`sections.${index}.title`}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Title</FormLabel>
-                    <Input type="text"
-                      placeholder="enter the section title"
-                       {...field} />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name={`sections.${index}.description`}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <Input
-                      type="text"
-                      placeholder="enter the section description"
-                      {...field}
-                    />
-                  </FormItem>
-                )}
-              />
-              {/* <FormField
-                control={form.control}
-                name={`sections.${index}.type`}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Type</FormLabel>
-                    <Input {...field} />
-                  </FormItem>
-                )}
-              /> */}
-              <Button
-                onClick={() => removeSection(index)}
-                variant="destructive"
-                type="button"
-              >
-                <Trash size={24} />
-                Remove Section
-              </Button>
-            </div>
-          ))}
-          <Button onClick={addSection} variant="ghost" type="button">
-            <PlusCircle size={24} />
-            Add Section
-          </Button>
-        </div>
-      )}
+      <div className="p-2">
+        {sections.length === 0 ? (
+          <div
+            className={cn(
+              "bg-gray-100 dark:bg-gray-700 rounded-md p-4",
+              "border border-gray-100 dark:border-gray-700",
+              "flex items-center justify-between",
+              "space-x-4",
+            )}
+          >
+            <p>No Founded Section</p>
+          </div>
+        ) : (
+          <ChapterList onEdit={onEdit} onReoder={onReoder} items={sections} />
+        )}
+      </div>
     </div>
   );
 }

@@ -650,30 +650,38 @@ GO
 
 
 CREATE OR ALTER PROCEDURE [dbo].[insertCourseLesson]
-	@courseId INT,
-	@pos SMALLINT,
-	@title NVARCHAR(64),
-	@description NVARCHAR(512),
-	@isFree BIT,
-	@durationInMinutes TINYINT
+    @courseId INT,
+    @pos SMALLINT,
+    @title NVARCHAR(64),
+    @description NVARCHAR(512),
+    @isFree BIT,
+    @durationInMinutes TINYINT
 AS
-BEGIN TRANSACTION
-	SET XACT_ABORT ON
-	SET NOCOUNT ON
+BEGIN
+    SET XACT_ABORT ON
+    SET NOCOUNT ON
+    BEGIN TRANSACTION
 
-	EXEC [dbo].[insertCourseSection] @courseId, @pos, @title, @description
+    INSERT INTO [dbo].[courseSection]
+	VALUES((SELECT MAX(id) + 1 FROM [dbo].[courseSection]), @courseId, @pos, @title, @description, 'L')
 
-	DECLARE @sectionId SMALLINT = SCOPE_IDENTITY()
+    DECLARE @sectionId SMALLINT
+    SELECT @sectionId = id 
+    FROM [dbo].[courseSection] 
+    WHERE pos = @pos AND courseId = @courseId AND title = @title AND description = @description
 
-	INSERT INTO [dbo].[courseLesson] VALUES (
-		@sectionId,
-		@courseId,
-		@isFree,
-		@durationInMinutes
-	)
-COMMIT TRANSACTION
+	print @sectionId
+
+    INSERT INTO [dbo].[courseLesson] (id, courseId, isFree, durationInMinutes) VALUES (
+        @sectionId,
+        @courseId,
+        @isFree,
+        @durationInMinutes
+    )
+
+    COMMIT TRANSACTION
+END
 GO
-
 
 
 
@@ -930,9 +938,15 @@ BEGIN TRANSACTION
 	SET XACT_ABORT ON
 	SET NOCOUNT ON
 
-	EXEC [dbo].[insertCourseSection] @courseId, @pos, @title, @description
+	INSERT INTO [dbo].[courseSection]
+	VALUES((SELECT MAX(id) + 1 FROM [dbo].[courseSection]), @courseId, @pos, @title, @description, 'E')
 
-	DECLARE @sectionId SMALLINT = SCOPE_IDENTITY()
+    DECLARE @sectionId SMALLINT
+    SELECT @sectionId = id 
+    FROM [dbo].[courseSection] 
+    WHERE pos = @pos AND courseId = @courseId AND title = @title AND description = @description
+
+	print @sectionId
 
 	INSERT INTO [dbo].[courseExercise] VALUES (
 		@sectionId,

@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Row } from "@tanstack/react-table";
-import { LayoutDashboard, MoreHorizontal, SquarePen, Trash2 } from "lucide-react";
+import { MoreHorizontal, SquarePen, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 interface WithId<T> {
@@ -38,7 +38,8 @@ export function DataTableRowActions<TData extends WithId<number>>({
         title="Delete Course"
         description="Are you sure you want to delete this Course?"
       >
-        <DeleteForm cardId={cardId} setIsOpen={setIsDeleteOpen} />
+        dda
+        {/* <DeleteForm cardId={cardId} setIsOpen={setIsDeleteOpen} /> */}
       </ResponsiveDialog>
 
       <DropdownMenu>
@@ -59,19 +60,6 @@ export function DataTableRowActions<TData extends WithId<number>>({
               </button>
             </DropdownMenuItem>
           </Link>
-          <DropdownMenuSeparator />
-
-          <Link href={`/courses/${cardId}/section`}>
-            <DropdownMenuItem className="group flex w-full items-center justify-between  text-left p-0 text-sm font-base text-neutral-500 ">
-              <button className="w-full justify-start flex rounded-md p-2 transition-all duration-75 hover:bg-neutral-100">
-                <IconMenu
-                  text="Section"
-                  icon={<LayoutDashboard className="h-4 w-4" />}
-                />
-              </button>
-            </DropdownMenuItem>
-          </Link>
-
           <DropdownMenuSeparator />
           <DropdownMenuItem className="group flex w-full items-center justify-between  text-left p-0 text-sm font-base text-neutral-500 ">
             <button

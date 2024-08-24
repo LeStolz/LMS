@@ -2,20 +2,27 @@
 
 import { db } from "@/lib/db";
 import { authorize } from "../../user/user";
-import { Course, CourseCategories, CourseDetails, CourseEssentials, CourseSection } from "@/types/course";
+import {
+  Course,
+  CourseCategories,
+  CourseDetails,
+  CourseEssentials,
+  CourseSection,
+} from "@/types/course";
 import exp from "constants";
 import { comma } from "postcss/lib/list";
 
 export async function getCourse<B extends boolean>({
   id,
   withCategories,
-  withSections
+  withSections,
 }: {
   id: number;
   withCategories: B;
-    withSections: B;
-
-}): Promise<B extends true ? Course & CourseCategories & CourseSection : Course> {
+  withSections: B;
+}): Promise<
+  B extends true ? Course & CourseCategories & CourseSection : Course
+> {
   const user = await authorize(["LN", "LT", "AD"]);
 
   if (!user) {
@@ -61,7 +68,9 @@ export async function getCourse<B extends boolean>({
     //   );
     // }
 
-    return course as B extends true ? Course & CourseCategories & CourseSection : Course;
+    return course as B extends true
+      ? Course & CourseCategories & CourseSection
+      : Course;
   } catch (error) {
     throw error;
   }
@@ -112,7 +121,7 @@ export async function insertCourseSection({
   title,
   description,
   pos,
-} : {
+}: {
   courseId: number;
   title: string;
   description?: string;
@@ -159,11 +168,11 @@ export async function updateCourseSection({
     throw new Error("Unauthorized.");
   }
 
-  console.log('sectionId : ', id);
-  console.log('courseId : ', courseId);
-  console.log('title : ', title);
-  console.log('description : ', description);
-  console.log('pos : ', pos);
+  console.log("sectionId : ", id);
+  console.log("courseId : ", courseId);
+  console.log("title : ", title);
+  console.log("description : ", description);
+  console.log("pos : ", pos);
 
   try {
     const section = (
@@ -209,3 +218,77 @@ export async function deleteCourseSection({
   }
 }
 
+export async function insertCourseLesson({
+  courseId,
+  pos,
+  title,
+  description,
+  isFree,
+  durationInMinutes,
+}: {
+  courseId: number;
+  title: string;
+  description?: string;
+  pos: number;
+  isFree: boolean;
+  durationInMinutes: number;
+}) {
+  const user = await authorize(["LT"]);
+
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
+
+  try {
+    const section = (
+      await (await db())
+        .input("courseId", courseId)
+        .input("pos", pos)
+        .input("title", title)
+        .input("description", description)
+        .input("isFree", isFree)
+        .input("durationInMinutes", durationInMinutes)
+        .execute("insertCourseLesson")
+    ).recordset?.[0];
+
+    return section;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function insertCourseExercise({
+  courseId,
+  pos,
+  title,
+  description,
+  type,
+}: {
+  courseId: number;
+  title: string;
+  description?: string;
+  pos: number;
+  type?: "E" | "Q";
+}) {
+  const user = await authorize(["LT"]);
+
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
+
+  try {
+    const section = (
+      await (await db())
+        .input("courseId", courseId)
+        .input("pos", pos)
+        .input("title", title)
+        .input("description", description)
+        .input("type", type)
+        .execute("insertCourseExercise")
+    ).recordset?.[0];
+
+    return section;
+  } catch (error) {
+    throw error;
+  }
+}
