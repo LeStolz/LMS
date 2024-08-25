@@ -1074,6 +1074,58 @@ BEGIN
 END;
 GO
 
+CREATE OR ALTER PROCEDURE RandomizeParentCategory
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @id INT;
+    DECLARE @parentId INT;
+
+    -- Temporary table to hold random user emails excluding admins
+    CREATE TABLE #Categories
+    (
+        id INT NOT NULL,
+        CONSTRAINT PK_CategoryIds PRIMARY KEY (id)
+    );
+
+    INSERT INTO #Categories (id)
+    SELECT id
+    FROM [dbo].[category]
+
+    DECLARE category_cursor CURSOR FOR
+    SELECT id
+    FROM [dbo].[category];
+
+    OPEN category_cursor;
+
+    FETCH NEXT FROM category_cursor INTO @id;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        SET @parentId = (SELECT TOP 1 id FROM #Categories ORDER BY NEWID())
+
+        IF @parentId = @id
+        BEGIN
+            SET @parentId = (SELECT TOP 1 id FROM #Categories ORDER BY NEWID());
+        END
+        ELSE
+        BEGIN
+            UPDATE [dbo].[category]
+            SET parentId = (SELECT TOP 1 id FROM #Categories ORDER BY NEWID())
+            WHERE id = @id;
+        END
+
+        FETCH NEXT FROM category_cursor INTO @id;
+    END;
+
+    CLOSE category_cursor;
+    DEALLOCATE category_cursor;
+
+    DROP TABLE #Categories;
+END;
+GO
+
 
 EXEC InsertCourseCategory;
 
@@ -1101,3 +1153,4 @@ EXEC RandomizeMessage;
 EXEC RandomizeNotification;
 
 EXEC RandomizeTransactionData;
+EXEC RandomizeParentCategory

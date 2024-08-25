@@ -28,7 +28,7 @@ GO
 DECLARE @StartTime DATETIME2, @EndTime DATETIME2;
 SET @StartTime = SYSDATETIME();
 
-EXEC selectLecturerEarningPerMonth_ptt 66894, '2021-11-01', 56122;
+EXEC selectLecturerEarningPerMonthFixed 66894, '2021-11-01', 56122;
 
 SET @EndTime = SYSDATETIME();
 SELECT DATEDIFF(MILLISECOND, @StartTime, @EndTime) AS ExecTimeInMsBeforeDcp;

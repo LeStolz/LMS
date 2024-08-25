@@ -843,6 +843,12 @@ WHERE
 AND 
     p.index_id IN (0, 1);
 
+
+select $PARTITION.pf_createdAtRange(createdAt) AS PartitionNumber, count(*) AS TotalRows
+from dbo.transactionFixed
+group by $PARTITION.pf_createdAtRange(createdAt)
+order by $PARTITION.pf_createdAtRange(createdAt);
+
 -------------------------courseAnnoucement----------------------------------------------------------------
 --create file groups
 ALTER DATABASE lms

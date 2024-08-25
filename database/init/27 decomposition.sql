@@ -43,5 +43,30 @@ BEGIN
 END;
 GO
 
+CREATE OR ALTER PROCEDURE [dbo].[updateUserFixed]
+	@id INT,
+	@oldPassword VARCHAR(128),
+	@password VARCHAR(128),
+	@name NVARCHAR(128)
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	IF @oldPassword <> (SELECT password FROM [dbo].[user] WHERE id = @id)
+	BEGIN;
+		THROW 51000, 'Incorrect password.', 1;
+	END
+
+	UPDATE [dbo].[user]
+	SET password = @password, name = @name
+	WHERE id = @id
+
+	UPDATE [dbo].[courseReviewFixed]
+	SET name = @name, email = (SELECT email FROM [dbo].[user] WHERE id = @id)
+	WHERE learnerId = @id
+COMMIT TRANSACTION
+GO
+
 exec RandomizeCourseSectionFileFixed;
 exec RandomizeCourseReviewFixed;
