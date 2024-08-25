@@ -15,6 +15,7 @@ export default async function Component({
     id: parseInt(params.courseId),
     withCategories: true,
     withSections: true,
+    withReviews: true,
   });
 
   if (!course) {

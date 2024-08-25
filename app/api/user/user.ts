@@ -181,9 +181,59 @@ export async function signUp(user: Omit<UserWithPassword, "id">) {
   }
 }
 
-export async function selectLecturer({status} : {status: string}) {
+export async function selectLecturer({ status }: { status: string }) {
   try {
-    const result = await (await db()).input("status", status).execute("selectLecturer");
+    const result = await (await db())
+      .input("status", status)
+      .execute("selectLecturer");
+    return result.recordset;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function verifyLecturer({
+  id,
+  status,
+  verifierId,
+  notificationTitle,
+  notificationContent,
+}: {
+  id: number;
+  status: string;
+  verifierId: number;
+  notificationTitle: string;
+  notificationContent: string;
+}) {
+  try {
+    await (await db())
+      .input("id", id)
+      .input("status", status)
+      .input("verifierId", verifierId)
+      .input("notificationTitle", notificationTitle)
+      .input("notificationContent", notificationContent)
+      .execute("verifyLecturer");
+  } catch (error) {
+    throw error;
+  }
+}
+
+
+export async function selectLecturerEarningPerMonth({
+  id,
+  date,
+  courseId 
+}: {
+  id: number;
+  date: Date;
+  courseId: number | null;
+}) {
+  try {
+    const result = await (await db())
+      .input("id", id)
+      .input("date", date)
+      .input("courseId", courseId)
+      .execute("selectLecturerEarningPerMonth");
     return result.recordset;
   } catch (error) {
     throw error;

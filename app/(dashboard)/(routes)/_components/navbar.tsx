@@ -20,6 +20,7 @@ import {
   Home,
   LineChart,
   List,
+  Search,
   ShoppingCart,
   User2,
   Users2,
@@ -76,9 +77,14 @@ export default function Navbar() {
             href: "/",
           },
           {
-            icon: <Compass className="h-5 w-5" />,
+            icon: <Search className="h-5 w-5" />,
             label: "Browse",
             href: "/browse",
+          },
+          {
+            icon: <Compass className="h-5 w-5" />,
+            label: "Course",
+            href: "/course-all",
           },
           {
             icon: <List className="h-5 w-5" />,

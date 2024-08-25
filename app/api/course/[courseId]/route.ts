@@ -21,13 +21,13 @@ export async function getCourse<B extends boolean>({
   id,
   withCategories,
   withSections,
+  withReviews,
 }: {
   id: number;
   withCategories: B;
   withSections: B;
-}): Promise<
-  B extends true ? Course & CourseCategories & CourseSection : Course
-> {
+  withReviews: B;
+}): Promise<any> {
   const user = await authorize(["LN", "LT", "AD"]);
 
   if (!user) {
@@ -44,7 +44,7 @@ export async function getCourse<B extends boolean>({
         .input("withOwners", false)
         .input("withSections", withSections)
         .input("withDescriptionDetails", false)
-        .input("withReviews", false)
+        .input("withReviews", withReviews)
         .input("learnerId", false)
         .execute("selectCourse")
     ).recordset?.[0];
@@ -62,6 +62,14 @@ export async function getCourse<B extends boolean>({
     } else {
       course.sections = JSON.parse(course.sections).filter((section: Object) =>
         section.hasOwnProperty("id")
+      );
+    }
+
+    if (course.reviews === null) {
+      course.reviews = [];
+    } else {
+      course.reviews = JSON.parse(course.reviews).filter((review: Object) =>
+        review.hasOwnProperty("id")
       );
     }
 
@@ -539,3 +547,83 @@ export async function deleteCourseSectionFile({
     throw error;
   }
 }
+
+export async function enrollInCourse({
+  courseId,
+  couponId,
+}: {
+  courseId: number;
+  couponId: number | null;
+}) {
+  const user = await authorize(["LN"]);
+
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
+
+  try {
+    const enrollment = (
+      await (await db())
+        .input("courseId", courseId)
+        .input("learnerId", user.id)
+        .input("couponId", couponId)
+        .execute("enrollInCourse")
+    ).recordset?.[0];
+
+    return enrollment;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function reviewCourse({
+  courseId,
+  rating,
+  content,
+}: {
+  courseId: number;
+  rating: number;
+  content: string;
+}) {
+  const user = await authorize(["LN"]);
+
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
+
+  try {
+    const review = (
+      await (await db())
+        .input("courseId", courseId)
+        .input("learnerId", user.id)
+        .input("rating", rating)
+        .input("content", content)
+        .execute("insertReview")
+    ).recordset?.[0];
+
+    return review;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function demandCourseVerification({id}: {id: number}) {
+  const user = await authorize(["LT"]);
+
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
+
+  try {
+    const course = (
+      await (await db())
+        .input("id", id)
+        .execute("demandCourseVerification")
+    ).recordset?.[0];
+
+    return course;
+  } catch (error) {
+    throw error;
+  }
+}
+

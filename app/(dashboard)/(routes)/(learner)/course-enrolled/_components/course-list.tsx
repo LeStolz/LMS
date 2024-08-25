@@ -17,10 +17,9 @@ interface CourseListProps {
     //     CourseSection &
     //     CourseChat)[] | any[];
     items: any[];
-    user: any;
 }
 
-export const CourseList = ({ items, user }: CourseListProps) => {
+export const CourseList = ({ items }: CourseListProps) => {
 
   console.log(items);
   return (
@@ -35,7 +34,6 @@ export const CourseList = ({ items, user }: CourseListProps) => {
             sections={item.sections}
             price={item.price}
             categories={item.categories}
-            user={user}
           />
         ))}
       </div>

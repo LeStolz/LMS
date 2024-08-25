@@ -2,9 +2,15 @@
 
 import { db } from "@/lib/db";
 import { authorize } from "../user/user";
-import { Course, CourseCategories, CourseEssentials } from "@/types/course";
+import {
+  Course,
+  CourseCategories,
+  CourseDetails,
+  CourseEssentials,
+  CourseSection,
+} from "@/types/course";
 import exp from "constants";
-
+import { getCourse } from "./[courseId]/route";
 
 export async function createCourse({
   title,
@@ -35,13 +41,7 @@ export async function createCourse({
   }
 }
 
-
-
-export async function deleteCourse({
-  id,
-}: {
-  id: number;
-}) {
+export async function deleteCourse({ id }: { id: number }) {
   const user = await authorize(["LT"]);
 
   if (!user) {
@@ -50,9 +50,7 @@ export async function deleteCourse({
 
   try {
     const course: Course = (
-      await (await db())
-        .input("id", id)
-        .execute("deleteCourse")
+      await (await db()).input("id", id).execute("deleteCourse")
     ).recordset?.[0];
 
     return course;
@@ -61,8 +59,8 @@ export async function deleteCourse({
   }
 }
 
-export async function searchCourseByOwner(){
-  const user = await authorize(["LT" , "AD"]);
+export async function searchCourseByOwner() {
+  const user = await authorize(["LT", "AD"]);
 
   if (!user) {
     throw new Error("Unauthorized.");
@@ -71,14 +69,14 @@ export async function searchCourseByOwner(){
   try {
     const course: Course[] = (
       await (await db())
-        .input("title",'')
+        .input("title", "")
         .input("status", null)
         .input("offset", 0)
-        .input("categoryIds", '[]')
+        .input("categoryIds", "[]")
         .input("lecturerId", user.id)
         .input("learnerId", null)
         .input("learningStatus", null)
-        .input("orderBy", 'C')
+        .input("orderBy", "C")
         .execute("searchCourses")
     ).recordset;
 
@@ -88,8 +86,12 @@ export async function searchCourseByOwner(){
   }
 }
 
-export async function searchCourseByCategory({categoryList} : {categoryList : any[]}){
-  const user = await authorize(["LT" , "AD"]);
+export async function searchCourseByCategory({
+  categoryList,
+}: {
+  categoryList: any[];
+}) {
+  const user = await authorize(["LT", "AD"]);
 
   if (!user) {
     throw new Error("Unauthorized.");
@@ -98,14 +100,14 @@ export async function searchCourseByCategory({categoryList} : {categoryList : an
   try {
     const course: Course[] = (
       await (await db())
-        .input("title",'')
+        .input("title", "")
         .input("status", null)
         .input("offset", 0)
         .input("categoryIds", categoryList)
         .input("lecturerId", null)
         .input("learnerId", null)
         .input("learningStatus", null)
-        .input("orderBy", 'C')
+        .input("orderBy", "C")
         .execute("searchCourses")
     ).recordset;
     return course;
@@ -114,8 +116,8 @@ export async function searchCourseByCategory({categoryList} : {categoryList : an
   }
 }
 
-export async function searchAllCourse(){
-  const user = await authorize(["LT" , "AD"]);
+export async function searchAllCourse() {
+  const user = await authorize(["LT", "AD"]);
 
   if (!user) {
     throw new Error("Unauthorized.");
@@ -124,14 +126,14 @@ export async function searchAllCourse(){
   try {
     const course: Course[] = (
       await (await db())
-        .input("title",'')
+        .input("title", "")
         .input("status", null)
         .input("offset", 0)
-        .input("categoryIds", '[]')
+        .input("categoryIds", "[]")
         .input("lecturerId", null)
         .input("learnerId", null)
         .input("learningStatus", null)
-        .input("orderBy", 'C')
+        .input("orderBy", "C")
         .execute("searchCourses")
     ).recordset;
     return course;
@@ -140,7 +142,9 @@ export async function searchAllCourse(){
   }
 }
 
-export async function searchVerifyCourse(){
+export async function searchVerifyCourse(): Promise<
+  (Course & CourseCategories & CourseSection)[]
+> {
   const user = await authorize(["LN"]);
 
   if (!user) {
@@ -148,25 +152,137 @@ export async function searchVerifyCourse(){
   }
 
   try {
-    const course: Course[] = (
+    let courses = (
       await (await db())
-        .input("title",'')
-        .input("status", 'V')
+        .input("title", "")
+        .input("status", "V")
         .input("offset", 0)
-        .input("categoryIds", '[]')
+        .input("categoryIds", "[]")
         .input("lecturerId", null)
         .input("learnerId", null)
         .input("learningStatus", null)
-        .input("orderBy", 'C')
+        .input("orderBy", "C")
+        .execute("searchCourses")
+    ).recordset as any[];
+
+    const detailedCourses = await Promise.all(
+      courses.map(async (course) => {
+        return await getCourse({
+          id: course.id,
+          withCategories: true,
+          withSections: true,
+          withReviews: true,
+        });
+      })
+    );
+
+    return detailedCourses;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function searchEnrollCourse({
+  learningStatus,
+}: {
+  learningStatus: string;
+}): Promise<(Course & CourseCategories & CourseSection)[]> {
+  const user = await authorize(["LN"]);
+
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
+
+  try {
+    const courses: Course[] = (
+      await (await db())
+        .input("title", "")
+        .input("status", null)
+        .input("offset", 0)
+        .input("categoryIds", "[]")
+        .input("lecturerId", null)
+        .input("learnerId", user.id)
+        .input("learningStatus", learningStatus)
+        .input("orderBy", "C")
         .execute("searchCourses")
     ).recordset;
+
+    const detailedCourses = await Promise.all(
+      courses.map(async (course) => {
+        return await getCourse({
+          id: course.id,
+          withCategories: true,
+          withSections: true,
+          withReviews: true,
+        });
+      })
+    );
+
+    return detailedCourses;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function verifyCourse({
+  id,
+  status,
+  verifierId,
+  notificationTitle,
+  notificationContent,
+}: {
+  id: number;
+  status: string;
+  verifierId: number;
+  notificationTitle: string;
+  notificationContent: string;
+}) {
+  const user = await authorize(["AD"]);
+
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
+
+  try {
+    const course = (
+      await (await db())
+        .input("id", id)
+        .input("status", status)
+        .input("verifierId", verifierId)
+        .input("notificationTitle", notificationTitle)
+        .input("notificationContent", notificationContent)
+        .execute("verifyCourse")
+    ).recordset?.[0];
+
     return course;
   } catch (error) {
     throw error;
   }
 }
 
+export async function searchCourseAnnouncement({
+  id,
+  offset,
+}: {
+  id: number;
+  offset: number;
+}) {
+  const user = await authorize(["LN", "LT", "AD"]);
 
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
 
+  try {
+    const course = (
+      await (await db())
+        .input("id", id)
+        .input("offset", offset)
+        .execute("searchCourseAnnouncement")
+    ).recordset;
 
-
+    return course;
+  } catch (error) {
+    throw error;
+  }
+}

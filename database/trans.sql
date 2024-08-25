@@ -1499,6 +1499,7 @@ GO
 
 
 CREATE OR ALTER PROCEDURE [dbo].[searchCourseAnnouncement]
+	@id INT,
 	@offset INT
 AS
 BEGIN TRANSACTION
@@ -1506,6 +1507,7 @@ BEGIN TRANSACTION
 	SET NOCOUNT ON
 
 	SELECT * FROM [dbo].[courseAnnouncement]
+	WHERE courseId = @id
 	ORDER BY createdAt DESC
 	OFFSET @offset ROWS
 	FETCH NEXT 40 ROWS ONLY

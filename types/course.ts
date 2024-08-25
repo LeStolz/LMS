@@ -41,13 +41,13 @@ export type Section = {
   description?: string;
   type: "M" | "L" | "E";
   sectionFiles?: File[];
-  lesson: Lesson[];
-  exercise: Exercise[];
+  lesson?: Lesson;
+  exercise?: Exercise;
   sectionProgress?: SectionProgress;
 }
 
 export type CourseSection = {
-  sections: Section[];
+  sections: Section [];
 };
 
 export type Lesson = {

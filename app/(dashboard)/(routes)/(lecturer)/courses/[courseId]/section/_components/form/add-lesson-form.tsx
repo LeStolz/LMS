@@ -62,7 +62,7 @@ export default function AddLesson({
       description: "",
       isFree: false,
       durationInMinutes: 0,
-      pos: sections.length + 1,
+      pos: sections.length,
     },
   });
 
@@ -75,7 +75,7 @@ export default function AddLesson({
       await insertCourseLesson({
         courseId: courseId,
         title: values.title,
-        pos: sections.length === 0 ? 0 : sections.length + 1,
+        pos: sections.length,
         isFree: values.isFree,
         durationInMinutes: values.durationInMinutes,
         description: values.description,

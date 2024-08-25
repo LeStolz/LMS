@@ -55,7 +55,7 @@ export default function AddExercise({
       courseId: courseId,
       title: "",
       description: "",
-      pos: sections.length + 1,
+      pos: sections.length,
       type: "E",
     },
   });
@@ -69,7 +69,7 @@ export default function AddExercise({
       await insertCourseExercise({
         courseId: courseId,
         title: values.title,
-        pos: sections.length === 0 ? 0 : sections.length + 1,
+        pos: sections.length,
         description: values.description,
         type: values.type,
       });
