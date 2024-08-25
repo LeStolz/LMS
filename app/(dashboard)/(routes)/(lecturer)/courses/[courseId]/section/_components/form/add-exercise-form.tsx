@@ -1,34 +1,36 @@
 "use client";
 
-import { Dispatch, SetStateAction } from "react";
-
-import {
-    insertCourseExercise
-} from "@/app/api/course/[courseId]/route";
+import React, { Dispatch, SetStateAction } from "react";
 import { Button } from "@/components/ui/button";
 import {
-    Form,
-    FormControl,
-    FormDescription,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
 } from "@/components/ui/select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { useForm, FormProvider } from "react-hook-form";
 import * as z from "zod";
+import { deleteCourse } from "@/app/api/course/course";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import {
+  deleteCourseSection,
+  insertCourseExercise,
+  insertCourseSection,
+} from "@/app/api/course/[courseId]/route";
+import { title } from "process";
+import { Input } from "@/components/ui/input";
 
 const formSchema = z.object({
   courseId: z.number(),
@@ -53,6 +55,7 @@ export default function AddExercise({
       courseId: courseId,
       title: "",
       description: "",
+      pos: sections.length + 1,
       type: "E",
     },
   });
@@ -66,11 +69,11 @@ export default function AddExercise({
       await insertCourseExercise({
         courseId: courseId,
         title: values.title,
-        pos: sections.length + 1,
+        pos: sections.length === 0 ? 0 : sections.length + 1,
         description: values.description,
-        type: values.type ?? undefined,
+        type: values.type,
       });
-      toast.success("Lessons added successfully");
+      toast.success("Exercise added successfully");
       router.refresh();
     } catch (error) {
       console.log(error);
@@ -78,104 +81,103 @@ export default function AddExercise({
   };
 
   return (
-    <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="space-y-6  sm:px-0 px-4"
-      >
-        <FormField
-          control={form.control}
-          name="title"
-          render={({ field }) => (
-            <FormItem className="flex-grow">
-              <FormLabel>Title</FormLabel>
-              <FormControl>
-                <Input
-                  type="text"
-                  placeholder="Enter title"
-                  {...field}
-                  className="rounded-none"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem className="flex-grow">
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Input
-                  type="text"
-                  placeholder="Enter description"
-                  {...field}
-                  className="rounded-none"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="type"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>type</FormLabel>
-              <Select
-                {...field}
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-              >
+    <FormProvider {...form}>
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-6  sm:px-0 px-4"
+        >
+          <FormField
+            control={form.control}
+            name="title"
+            render={({ field }) => (
+              <FormItem className="flex-grow">
+                <FormLabel>Title</FormLabel>
                 <FormControl>
-                  <SelectTrigger id="type" className="w-full">
-                    <SelectValue placeholder="Select exercise type" />
-                  </SelectTrigger>
+                  <Input
+                    type="text"
+                    placeholder="Enter title"
+                    {...field}
+                    className="rounded-none"
+                  />
                 </FormControl>
-                <SelectContent>
-                  <SelectItem value="E">E</SelectItem>
-                  <SelectItem value="Q">Q</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormDescription>
-                Course exercise type is required for publishing.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="w-full flex justify-center sm:space-x-6">
-          <Button
-            size="lg"
-            variant="outline"
-            disabled={isLoading}
-            className="w-full hidden sm:block"
-            type="button"
-            onClick={() => setIsOpen(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            size="lg"
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-green-500 hover:bg-green-400"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Adding
-              </>
-            ) : (
-              <span>Add</span>
+                <FormMessage />
+              </FormItem>
             )}
-          </Button>
-        </div>
-      </form>
-    </Form>
+          />
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem className="flex-grow">
+                <FormLabel>Description</FormLabel>
+                <FormControl>
+                  <Input
+                    type="text"
+                    placeholder="Enter description"
+                    {...field}
+                    className="rounded-none"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="type"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>type</FormLabel>
+                <Select
+                  {...field}
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger id="type" className="w-full">
+                      <SelectValue placeholder="Select exercise type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="E">E</SelectItem>
+                    <SelectItem value="Q">Q</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="w-full flex justify-center sm:space-x-6">
+            <Button
+              size="lg"
+              variant="outline"
+              disabled={isLoading}
+              className="w-full hidden sm:block"
+              type="button"
+              onClick={() => setIsOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="lg"
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-green-500 hover:bg-green-400"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Adding
+                </>
+              ) : (
+                <span>Add</span>
+              )}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </FormProvider>
   );
 }

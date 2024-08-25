@@ -7,10 +7,17 @@ import { LoaderCircleIcon, Pencil } from "lucide-react";
 import React from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -18,31 +25,46 @@ import {
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { updateCourseSection } from "@/app/api/course/[courseId]/route";
+import {
+  updateCourseLesson,
+  updateCourseSection,
+} from "@/app/api/course/[courseId]/route";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 
-interface SectionTitleFormProps {
-  initialData: { title: string; description: string; pos: number };
+interface SectionAcessFormProps {
+  initialData: {
+    title: string;
+    description: string;
+    lessonInfo: string;
+    pos: number;
+  };
   courseId: number;
   sectionId: number;
-  type: string;
 }
 
 const formSchema = z.object({
-  title: z.string().min(1, { message: "Title is required" }),
+  isFree: z.boolean().default(false),
 });
 
-export const SectionTitleForm = ({
+export const SectionAcessForm = ({
   initialData,
   courseId,
   sectionId,
-  type,
-}: SectionTitleFormProps) => {
+}: SectionAcessFormProps) => {
   const [isEditing, setIsEditing] = React.useState(false);
   const toggleEditing = () => setIsEditing((prev) => !prev);
   const router = useRouter();
+
+  const lessonInfo = JSON.parse(initialData.lessonInfo);
+  let isFree = false;
+  if(initialData.lessonInfo){
+    isFree = lessonInfo.length > 0 ? lessonInfo[0].isFree : false;
+  }
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData,
+    defaultValues: { isFree },
   });
 
   const { isSubmitting, isValid } = form.formState;
@@ -50,20 +72,23 @@ export const SectionTitleForm = ({
   const [isLoading, setIsLoading] = React.useState(false);
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
+    console.log("data : ", data);
     try {
       setIsLoading(true);
-      await updateCourseSection({
+      await updateCourseLesson({
+        id: lessonInfo[0].id,
         courseId,
-        id: sectionId,
-        title: data.title,
+        title: initialData.title,
         description: initialData.description,
         pos: initialData.pos, // Keep the pos unchanged
+        isFree: data.isFree,
+        durationInMinutes: lessonInfo[0].durationInMinutes,
       });
-      toast.success("Section title and description updated successfully");
+      toast.success("Lesson Access updated successfully");
       toggleEditing();
       router.refresh();
     } catch (error) {
-      toast.error("Failed to update section title and description");
+      toast.error("Failed to update section Description");
     } finally {
       setIsLoading(false);
     }
@@ -76,11 +101,7 @@ export const SectionTitleForm = ({
   return (
     <div className="mt-6 border bg-gray-100 dark:bg-gray-700 rounded-md p-4">
       <div className="font-medium flex items-center justify-between">
-        {type === "lesson"
-          ? "Lesson Title"
-          : type === "exercise"
-          ? "Exercise Title"
-          : "Section Title"}
+        Lesson Access
         <div className="flex items-center gap-x-2">
           <Button
             onClick={toggleEditing}
@@ -112,16 +133,20 @@ export const SectionTitleForm = ({
               {isLoading ? (
                 <LoaderCircleIcon className="animate-spin" />
               ) : (
-                "Update Title"
+                "Update"
               )}
             </Button>
           )}
         </div>
       </div>
       {!isEditing && (
-        <>
-          <p className="text-sm mt-2">{initialData.title}</p>
-        </>
+        <p className="text-sm mt-2">
+          {initialData.lessonInfo && lessonInfo[0].isFree ? (
+            <>This Lesson is free for preview</>
+          ) : (
+            <>This Lesson is not free</>
+          )}
+        </p>
       )}
       {isEditing && (
         <Form {...form}>
@@ -131,20 +156,21 @@ export const SectionTitleForm = ({
           >
             <FormField
               control={form.control}
-              name="title"
+              name="isFree"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Title</FormLabel>
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                   <FormControl>
-                    <Input
-                      type="text"
-                      disabled={isSubmitting}
-                      placeholder="Introduction to the course"
-                      {...field}
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
                     />
                   </FormControl>
+                  <FormDescription>
+                    Check this box if you want to make this lesson free for
+                    preview
+                  </FormDescription>
                   <FormMessage>
-                    {form.formState.errors.title?.message}
+                    {form.formState.errors.isFree?.message}
                   </FormMessage>
                 </FormItem>
               )}

@@ -101,7 +101,7 @@ import { DataTableRowActions } from "./form/table-row-action";
     // console.log(sectionField);
   
     return (
-      <div className="mt-6 border bg-slate-200 dark:bg-slate-800 rounded-md p-4">
+      <div className="mt-6 border bg-slate-100 dark:bg-slate-800 rounded-md p-4">
         <div className="font-medium flex items-center justify-between">
           Section
           <DataTableRowActions courseId={courseId} sections={sections}/>

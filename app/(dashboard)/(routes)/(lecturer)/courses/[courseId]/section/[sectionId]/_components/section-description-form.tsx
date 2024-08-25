@@ -25,6 +25,7 @@ interface SectionDescriptionFormProps {
   initialData: { title: string; description: string; pos: number };
   courseId: number;
   sectionId: number;
+  type: string;
 }
 
 const formSchema = z.object({
@@ -35,6 +36,7 @@ export const SectionDescriptionForm = ({
   initialData,
   courseId,
   sectionId,
+  type,
 }: SectionDescriptionFormProps) => {
   const [isEditing, setIsEditing] = React.useState(false);
   const toggleEditing = () => setIsEditing((prev) => !prev);
@@ -75,9 +77,18 @@ export const SectionDescriptionForm = ({
   return (
     <div className="mt-6 border bg-gray-100 dark:bg-gray-700 rounded-md p-4">
       <div className="font-medium flex items-center justify-between">
-        Section Description
+        {type === "lesson"
+          ? "Lesson Description"
+          : type === "exercise"
+          ? "Exercise Description"
+          : "Section Description"}
         <div className="flex items-center gap-x-2">
-          <Button onClick={toggleEditing} type="button" variant="ghost" className="p-0">
+          <Button
+            onClick={toggleEditing}
+            type="button"
+            variant="ghost"
+            className="p-0"
+          >
             {isEditing ? (
               <>
                 <Button type="button" variant="destructive">

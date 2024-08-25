@@ -23,13 +23,13 @@ import { DataTableRowActions } from "./data-table-row-actions";
 const getStatusLabel = (status: any) => {
   switch (status) {
     case "C":
-      return { label: "Completed", color: "bg-green-500 text-white" };
+      return { label: "Created", color: "bg-yellow-500 text-white" };
     case "R":
-      return { label: "Running", color: "bg-blue-500 text-white" };
+      return { label: "Rejected", color: "bg-red-500 text-white" };
     case "P":
-      return { label: "Pending", color: "bg-yellow-500 text-black" };
+      return { label: "Pending", color: "bg-gray-500 text-black" };
     case "V":
-      return { label: "Verified", color: "bg-purple-500 text-white" };
+      return { label: "Verified", color: "bg-green-500 text-white" };
     default:
       return { label: "Inactive", color: "bg-red-500 text-white" };
   }

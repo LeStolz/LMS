@@ -11,7 +11,12 @@ import {
 } from "@/types/course";
 import exp from "constants";
 import { comma } from "postcss/lib/list";
+import Mux from "@mux/mux-node";
 
+const mux = new Mux({
+  tokenId: process.env.MUX_TOKEN_ID,
+  tokenSecret: process.env.MUX_TOKEN_SECRET,
+});
 export async function getCourse<B extends boolean>({
   id,
   withCategories,
@@ -257,6 +262,48 @@ export async function insertCourseLesson({
   }
 }
 
+export async function updateCourseLesson({
+  id,
+  courseId,
+  title,
+  description,
+  pos,
+  isFree,
+  durationInMinutes,
+}: {
+  id: number;
+  courseId: number;
+  title: string;
+  description?: string;
+  pos: number;
+  isFree: boolean;
+  durationInMinutes: number;
+}) {
+  const user = await authorize(["LT"]);
+
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
+
+  try {
+    const section = (
+      await (await db())
+        .input("id", id)
+        .input("courseId", courseId)
+        .input("title", title)
+        .input("description", description)
+        .input("pos", pos)
+        .input("isFree", isFree)
+        .input("durationInMinutes", durationInMinutes)
+        .execute("updateCourseLesson")
+    ).recordset?.[0];
+
+    return section;
+  } catch (error) {
+    throw error;
+  }
+}
+
 export async function insertCourseExercise({
   courseId,
   pos,
@@ -286,6 +333,206 @@ export async function insertCourseExercise({
         .input("type", type)
         .execute("insertCourseExercise")
     ).recordset?.[0];
+
+    return section;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function insertCourseQuiz({
+  courseId,
+  pos,
+  title,
+  description,
+  durationInMinutes,
+}: {
+  courseId: number;
+  title: string;
+  description?: string;
+  pos: number;
+  durationInMinutes: number;
+}) {
+  const user = await authorize(["LT"]);
+
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
+
+  try {
+    const section = (
+      await (await db())
+        .input("courseId", courseId)
+        .input("pos", pos)
+        .input("title", title)
+        .input("description", description)
+        .input("durationInMinutes", durationInMinutes)
+        .execute("insertCourseQuiz")
+    ).recordset?.[0];
+
+    return section;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function updateCourseQuiz({
+  id,
+  courseId,
+  title,
+  description,
+  pos,
+  durationInMinutes,
+}: {
+  id: number;
+  courseId: number;
+  title: string;
+  description?: string;
+  pos: number;
+  isFree: boolean;
+  durationInMinutes: number;
+}) {
+  const user = await authorize(["LT"]);
+
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
+
+  console.log("sectionId : ", id);
+  console.log("courseId : ", courseId);
+  console.log("title : ", title);
+  console.log("description : ", description);
+  console.log("pos : ", pos);
+
+  try {
+    const section = (
+      await (await db())
+        .input("id", id)
+        .input("courseId", courseId)
+        .input("title", title)
+        .input("description", description)
+        .input("pos", pos)
+        .input("durationInMinutes", durationInMinutes)
+        .execute("updateCourseQuiz")
+    ).recordset?.[0];
+
+    return section;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function insertCourseExerciseSolutionFile({
+  id,
+  courseSectionId,
+  courseId,
+  path,
+  name,
+}: {
+  courseId: number;
+  courseSectionId: number;
+  id: number;
+  path: string;
+  name: string;
+}) {
+  const user = await authorize(["LT"]);
+
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
+
+  try {
+    const section = (
+      await (await db())
+        .input("courseId", courseId)
+        .input("courseSectionId", courseSectionId)
+        .input("id", id)
+        .input("path", path)
+        .input("name", name)
+        .execute("insertCourseExerciseSolutionFile")
+    ).recordset?.[0];
+
+    return section;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function insertCourseSectionFile({
+  courseSectionId,
+  courseId,
+  path,
+  name,
+  isVideo,
+}: {
+  courseSectionId: number;
+  courseId: number;
+  path: string;
+  name: string;
+  isVideo?: boolean;
+}) {
+  const user = await authorize(["LT"]);
+
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
+
+  try {
+    let section;
+    if (isVideo) {
+      const asset = await mux.video.assets.create({
+        input: [{ url: path }],
+        playback_policy: ["public"],
+        encoding_tier: "baseline",
+      });
+
+      let concat = name + "|" + asset.playback_ids?.[0]?.id;
+      section = (
+        await (await db())
+          .input("id", null)
+          .input("courseId", courseId)
+          .input("courseSectionId", courseSectionId)
+          .input("path", path)
+          .input("name", concat)
+          .execute("insertCourseSectionFile")
+      ).recordset?.[0];
+    } else {
+      section = (
+        await (await db())
+          .input("id", null)
+          .input("courseId", courseId)
+          .input("courseSectionId", courseSectionId)
+          .input("path", path)
+          .input("name", name)
+          .execute("insertCourseSectionFile")
+      ).recordset?.[0];
+    }
+
+    return section;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function deleteCourseSectionFile({
+  id,
+}: // assetId
+{
+  id: number;
+  // assetId: string;
+}) {
+  const user = await authorize(["LT"]);
+
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
+
+  try {
+    const section = (
+      await (await db()).input("id", id).execute("deleteCourseSectionFile")
+    ).recordset?.[0];
+
+    // await mux.video.assets.del(assetId);
 
     return section;
   } catch (error) {

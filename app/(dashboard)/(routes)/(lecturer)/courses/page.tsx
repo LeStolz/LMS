@@ -12,7 +12,7 @@ export default async function Component() {
   let data;
   
   try{
-    data = await searchCourseByOwner(); // ---modify this 
+    data = await searchCourseByOwner();
   }
   catch{
     return redirect("/");

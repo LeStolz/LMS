@@ -59,7 +59,7 @@ export default function AddSection({
       await insertCourseSection({
         courseId: courseId,
         title: values.title,
-        pos: sections.length + 1,
+        pos: sections.length === 0 ? 0 : sections.length + 1,
         description: values.description,
       });
       toast.success("Sections Added successfully");

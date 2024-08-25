@@ -11,9 +11,10 @@ import {
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Grip, Pencil, Trash } from "lucide-react";
+import { Book, Grip, NotepadText, Pencil, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { deleteCourseSection } from "@/app/api/course/[courseId]/route";
+
 interface ChaptersListProps {
   items: any[];
   onReoder: (
@@ -34,12 +35,11 @@ export const ChapterList = ({ items, onReoder, onEdit }: ChaptersListProps) => {
   const [sections, setSections] = React.useState<any[]>(
     items.sort((a, b) => a.pos - b.pos)
   );
+
   React.useEffect(() => {
     setIsMounted(true);
-    // if(isMounted){
-    //     onReoder(sections.map((section, index) => ({id: section.id, pos: index})));
-    // }
   }, []);
+
   React.useEffect(() => {
     setSections(items);
   }, [items]);
@@ -100,52 +100,72 @@ export const ChapterList = ({ items, onReoder, onEdit }: ChaptersListProps) => {
             ref={provided.innerRef}
             className="space-y-4"
           >
-            {sections.map((section, index) => (
-              <Draggable
-                key={section.id}
-                draggableId={section.id.toString()}
-                index={index}
-              >
-                {(provided) => (
-                  <div
-                    ref={provided.innerRef}
-                    {...provided.draggableProps}
-                    {...provided.dragHandleProps}
-                    className={cn(
-                      "bg-gray-100 dark:bg-gray-700 rounded-md p-4",
-                      "border border-gray-100 dark:border-gray-700",
-                      "flex items-center justify-between",
-                      "space-x-4",
-                      "cursor-move"
-                    )}
-                  >
-                    <div className="flex items-center space-x-4">
-                      <Grip className="h-5 w-5" />
-                      <div className="text-gray-500">{index + 1}</div>
-                      <div className="font-medium">{section.title}</div>
+            {sections.map((section, index) => {
+              const backgroundColor =
+                section.type === "M"
+                  ? "bg-gray-200 dark:bg-gray-500"
+                  : section.type === "L"
+                  ? "bg-gray-100 dark:bg-gray-700"
+                  : section.type === "E"
+                  ? "bg-gray-100 dark:bg-gray-700"
+                  : "bg-white dark:bg-gray-800";
+              const marginClass = section.type === "M" ? "ml-0" : "ml-5";
+
+              return (
+                <Draggable
+                  key={section.id}
+                  draggableId={section.id.toString()}
+                  index={index}
+                >
+                  {(provided) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      className={cn(
+                        backgroundColor,
+                        marginClass,
+                        "rounded-md p-4",
+                        "border border-gray-300 dark:border-gray-700",
+                        "flex items-center justify-between",
+                        "space-x-4",
+                        "cursor-move"
+                      )}
+                    >
+                      <div className="flex items-center space-x-4">
+                        {section.type === "M" ? (
+                          <Grip className="h-5 w-5" />
+                        ) : section.type === "L" ? (
+                          <Book className="h-5 w-5 text-red-500" />
+                        ) : section.type === "E" ? (
+                          <NotepadText className="h-5 w-5 text-cyan-500" />
+                        ) : null}
+                        <div className="text-gray-500 dark:text-gray-100">{index + 1}</div>
+                        <div className="font-medium">{section.title}</div>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Button
+                          onClick={() => onEdit(section.id)}
+                          type="button"
+                          variant="ghost"
+                          className="text-gray-300 hover:text-gray-500"
+                        >
+                          <Pencil className="h-5 w-5" />
+                        </Button>
+                        <Button
+                          onClick={() => onDelete(section.id, section.courseId)}
+                          variant="ghost"
+                          type="button"
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <Trash className="h-5 w-5" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-1">
-                      <Button
-                        onClick={() => onEdit(section.id)}
-                        type="button"
-                        variant="ghost"
-                        className="text-gray-500 hover:text-gray-700"
-                      >
-                        <Pencil className="h-5 w-5" />
-                      </Button>
-                      <Button
-                        onClick={() => onDelete(section.id, section.courseId)}
-                        variant="ghost"
-                        type="button"
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash className="h-5 w-5" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </Draggable>
-            ))}
+                  )}
+                </Draggable>
+              );
+            })}
             {provided.placeholder}
           </div>
         )}

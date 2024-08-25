@@ -5,7 +5,7 @@ SET DATEFIRST 7
 GO
 
 
-
+Update [dbo].[course] set type = 'P' where id = 1
 
 -- Create the procedures
 CREATE OR ALTER PROCEDURE [dbo].[selectUser]
@@ -821,6 +821,29 @@ BEGIN TRANSACTION
 COMMIT TRANSACTION
 GO
 
+------
+CREATE OR ALTER PROCEDURE [dbo].[selectCourseSectionFile]
+	@courseSectionId INT,
+	@courseId INT
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	SELECT
+		*,
+		(
+			SELECT f.*
+			FROM [dbo].[courseSectionFile] csf
+			JOIN [dbo].[file] f ON csf.id = f.id
+			WHERE csf.courseSectionId = @courseSectionId AND csf.courseId = @courseId
+			FOR JSON PATH, INCLUDE_NULL_VALUES
+		) as files
+	FROM [dbo].[courseSectionFile]
+	WHERE courseSectionId = @courseSectionId AND courseId = @courseId
+COMMIT TRANSACTION
+GO
+
 
 
 
@@ -1607,3 +1630,4 @@ BEGIN TRANSACTION
 	VALUES(@senderId, @courseId, @title, @content)
 COMMIT TRANSACTION
 GO
+
