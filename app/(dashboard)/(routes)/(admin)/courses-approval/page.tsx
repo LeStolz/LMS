@@ -10,7 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import CourseForm from "./_components/courseForm";
+import CourseList from "./_components/course-list";
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 
@@ -21,7 +21,7 @@ export default async function Component() {
         <h1 className="text-2xl font-bold pb-4">Course List</h1>
       </div>
       <Suspense fallback={<Loader2 className="animate-spin" />}>
-        <CourseForm />
+        <CourseList />
       </Suspense>
     </div>
   );

@@ -20,6 +20,7 @@ import {
   Home,
   LineChart,
   List,
+  ShoppingCart,
   User2,
   Users2,
 } from "lucide-react";
@@ -83,6 +84,11 @@ export default function Navbar() {
             icon: <List className="h-5 w-5" />,
             label: "Enrolled Course",
             href: "/course-enrolled",
+          },
+          {
+            icon: <ShoppingCart className="h-5 w-5" />,
+            label: "Cart",
+            href: "/cart",
           },
         ]
       : [];

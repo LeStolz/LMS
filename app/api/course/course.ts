@@ -62,7 +62,7 @@ export async function deleteCourse({
 }
 
 export async function searchCourseByOwner(){
-  const user = await authorize(["LT"]);
+  const user = await authorize(["LT" , "AD"]);
 
   if (!user) {
     throw new Error("Unauthorized.");
@@ -87,3 +87,86 @@ export async function searchCourseByOwner(){
     throw error;
   }
 }
+
+export async function searchCourseByCategory({categoryList} : {categoryList : any[]}){
+  const user = await authorize(["LT" , "AD"]);
+
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
+
+  try {
+    const course: Course[] = (
+      await (await db())
+        .input("title",'')
+        .input("status", null)
+        .input("offset", 0)
+        .input("categoryIds", categoryList)
+        .input("lecturerId", null)
+        .input("learnerId", null)
+        .input("learningStatus", null)
+        .input("orderBy", 'C')
+        .execute("searchCourses")
+    ).recordset;
+    return course;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function searchAllCourse(){
+  const user = await authorize(["LT" , "AD"]);
+
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
+
+  try {
+    const course: Course[] = (
+      await (await db())
+        .input("title",'')
+        .input("status", null)
+        .input("offset", 0)
+        .input("categoryIds", '[]')
+        .input("lecturerId", null)
+        .input("learnerId", null)
+        .input("learningStatus", null)
+        .input("orderBy", 'C')
+        .execute("searchCourses")
+    ).recordset;
+    return course;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function searchVerifyCourse(){
+  const user = await authorize(["LN"]);
+
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
+
+  try {
+    const course: Course[] = (
+      await (await db())
+        .input("title",'')
+        .input("status", 'V')
+        .input("offset", 0)
+        .input("categoryIds", '[]')
+        .input("lecturerId", null)
+        .input("learnerId", null)
+        .input("learningStatus", null)
+        .input("orderBy", 'C')
+        .execute("searchCourses")
+    ).recordset;
+    return course;
+  } catch (error) {
+    throw error;
+  }
+}
+
+
+
+
+

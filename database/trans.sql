@@ -1631,3 +1631,16 @@ BEGIN TRANSACTION
 COMMIT TRANSACTION
 GO
 
+
+create or alter PROCEDURE [dbo].[selectLecturer]
+	@status CHAR(1)
+AS	
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	SELECT * FROM [dbo].[lecturer] l
+	JOIN [dbo].[user] u ON l.id = u.id
+	WHERE status = @status
+COMMIT TRANSACTION
+GO

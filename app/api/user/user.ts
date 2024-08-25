@@ -180,3 +180,12 @@ export async function signUp(user: Omit<UserWithPassword, "id">) {
     throw error;
   }
 }
+
+export async function selectLecturer({status} : {status: string}) {
+  try {
+    const result = await (await db()).input("status", status).execute("selectLecturer");
+    return result.recordset;
+  } catch (error) {
+    throw error;
+  }
+}

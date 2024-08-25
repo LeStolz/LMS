@@ -45,6 +45,7 @@ export type Lecturer = UserWithBankAccount & {
   academicRank: "A" | "B" | "C" | "D" | "E";
   academicDegree: "B" | "M" | "D";
   profileImage: string;
+  status: "R" | "P" | "V";
   certificates: Certificate[];
   workExperiences: WorkExperience[];
 };
