@@ -66,7 +66,7 @@ BEGIN TRANSACTION
 	SET XACT_ABORT ON
 	SET NOCOUNT ON
 
-	SELECT *
+	SELECT id
 	FROM [dbo].[user]
 	WHERE email = @email AND password = @password
 COMMIT TRANSACTION
@@ -78,8 +78,8 @@ IF OBJECT_ID('[dbo].[insertUser]', 'P') IS NOT NULL
 GO
 CREATE OR ALTER PROCEDURE [dbo].[insertUser]
 	@email VARCHAR(256),
-	@password VARCHAR(128),
 	@name NVARCHAR(128),
+	@password VARCHAR(128),
 	@type CHAR(2)
 AS
 BEGIN TRANSACTION
@@ -326,7 +326,7 @@ COMMIT TRANSACTION
 GO
 
 ---------------------
-CREATE OR ALTER PROCEDURE [dbo].[selectAllCourses]	
+CREATE OR ALTER PROCEDURE [dbo].[selectAllCourses]
 AS
 BEGIN TRANSACTION
 	SET XACT_ABORT ON
@@ -666,8 +666,8 @@ BEGIN
 	VALUES((SELECT MAX(id) + 1 FROM [dbo].[courseSection]), @courseId, @pos, @title, @description, 'L')
 
     DECLARE @sectionId SMALLINT
-    SELECT @sectionId = id 
-    FROM [dbo].[courseSection] 
+    SELECT @sectionId = id
+    FROM [dbo].[courseSection]
     WHERE pos = @pos AND courseId = @courseId AND title = @title AND description = @description
 
 	print @sectionId
@@ -965,8 +965,8 @@ BEGIN TRANSACTION
 	VALUES((SELECT MAX(id) + 1 FROM [dbo].[courseSection]), @courseId, @pos, @title, @description, 'E')
 
     DECLARE @sectionId SMALLINT
-    SELECT @sectionId = id 
-    FROM [dbo].[courseSection] 
+    SELECT @sectionId = id
+    FROM [dbo].[courseSection]
     WHERE pos = @pos AND courseId = @courseId AND title = @title AND description = @description
 
 	print @sectionId
@@ -1148,7 +1148,7 @@ GO
 
 -----
 CREATE OR ALTER PROCEDURE [dbo].[selectRegion]
-AS 
+AS
 BEGIN TRANSACTION
 	SET XACT_ABORT ON
 	SET NOCOUNT ON
@@ -1167,8 +1167,7 @@ BEGIN TRANSACTION
 	SELECT name FROM [dbo].[region]
 	WHERE id = @id
 COMMIT TRANSACTION
-
-----
+GO
 
 
 CREATE OR ALTER PROCEDURE [dbo].[searchRegions]
@@ -1228,9 +1227,9 @@ BEGIN TRANSACTION
     FROM OPENJSON(@categoryIds)
     WITH (value INT '$')
 
-	SELECT *, (CASE 
+	SELECT *, (CASE
             WHEN c.visitorCount = 0 THEN 0
-            ELSE c.learnerCount / c.visitorCount 
+            ELSE c.learnerCount / c.visitorCount
         END) AS conversionRate FROM [dbo].[course] c
 	WHERE title LIKE @title + '%' AND (@status IS NULL OR status = @status)
 	AND (@lecturerId IS NULL OR EXISTS(
@@ -1247,7 +1246,7 @@ BEGIN TRANSACTION
 		SELECT categoryId FROM [dbo].[courseCategory] cc
 		WHERE cc.courseId = c.id
 	)
-	ORDER BY 
+	ORDER BY
         (CASE WHEN @orderBy = 'L' THEN learnerCount END) DESC,
         (CASE WHEN @orderBy = 'C' THEN createdAt END) DESC,
         (CASE WHEN @orderBy = 'R' THEN rating END) DESC,

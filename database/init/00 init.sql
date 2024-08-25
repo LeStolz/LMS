@@ -278,12 +278,12 @@ ALTER TABLE [dbo].[category] ADD courseCount AS [dbo].[getCategoryCourseCount](i
 GO
 
 
-CREATE FUNCTION [dbo].[getCategoryLearnerCount](@id INT)
+CREATE OR ALTER FUNCTION [dbo].[getCategoryLearnerCount](@id INT)
 RETURNS INT
 AS
 BEGIN
 	RETURN (
-		SELECT * FROM [dbo].[enrolledCourse] ec
+		SELECT COUNT(*) FROM [dbo].[enrolledCourse] ec
 		JOIN [dbo].[courseCategory] cc ON ec.courseId = cc.courseId
 		WHERE cc.categoryId = @id
 	)
@@ -1187,6 +1187,7 @@ BEGIN TRANSACTION
         GROUP BY courseId
     ) i ON mci.courseId = i.courseId
     WHERE DATEFROMPARTS(YEAR(mci.date), MONTH(mci.date), 1) = @date
+
 
     INSERT INTO [dbo].[monthlyCourseIncome](courseId, date, income)
     SELECT i.courseId, @date, i.totalRevenue
