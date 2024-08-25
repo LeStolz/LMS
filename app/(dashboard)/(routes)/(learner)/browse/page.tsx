@@ -16,6 +16,7 @@ import {
 import { CourseList } from "./_components/course-list";
 import { authorize } from "@/app/api/user/user";
 import { redirect } from "next/navigation";
+import SearchData from "./_components/search-data";
 
 export default async function Component() {
   const categories = await searchCategories({ title: "" });
@@ -47,7 +48,7 @@ export default async function Component() {
       <div className="w-full mx-auto p-4">
         <SearchBar />
         <main className="space-y-8">
-          <CourseList items={notAttendedCourses} user={user} />
+          <SearchData user={user} />
         </main>
       </div>
     </>
