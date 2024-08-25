@@ -464,7 +464,7 @@ CREATE TABLE [dbo].[courseReview]
 	CONSTRAINT [fk_courseReview_course] FOREIGN KEY(courseId) REFERENCES [dbo].[course](id)
 	ON DELETE CASCADE,
 
-	CONSTRAINT [pk_courseReview] PRIMARY KEY(learnerId, courseId, createdAt)
+	CONSTRAINT [pk_courseReview] PRIMARY KEY(courseId, learnerId, createdAt)
 );
 GO
 
@@ -715,7 +715,7 @@ CREATE TABLE [dbo].[courseQuizQuestion]
 		FOREIGN KEY(courseQuizId, courseId) REFERENCES [dbo].[courseQuiz](id, courseId)
 		ON DELETE CASCADE,
 
-	CONSTRAINT [pk_courseQuizQuestion] PRIMARY KEY(id, courseQuizId, courseId)
+	CONSTRAINT [pk_courseQuizQuestion] PRIMARY KEY(courseQuizId, courseId, id)
 );
 GO
 
@@ -735,7 +735,7 @@ CREATE TABLE [dbo].[courseQuizQuestionAnswer]
 	CONSTRAINT [Course quiz question answer symbol is required.] CHECK(LEN(symbol) = 1),
 	CONSTRAINT [Course quiz answer is required.] CHECK(LEN(answer) > 0),
 
-	CONSTRAINT [pk_courseQuizQuestionAnswer] PRIMARY KEY(symbol, courseQuizQuestionId, courseQuizId, courseId)
+	CONSTRAINT [pk_courseQuizQuestionAnswer] PRIMARY KEY(courseQuizQuestionId, courseQuizId, courseId, symbol)
 );
 GO
 

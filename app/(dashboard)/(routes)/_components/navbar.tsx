@@ -59,7 +59,7 @@ export default function Navbar() {
           {
             icon: <List className="h-5 w-5" />,
             label: "Courses",
-            href: "/courses",
+            href: "/courses-approval",
           },
           {
             icon: <Users2 className="h-5 w-5" />,
@@ -78,6 +78,11 @@ export default function Navbar() {
             icon: <Compass className="h-5 w-5" />,
             label: "Browse",
             href: "/browse",
+          },
+          {
+            icon: <List className="h-5 w-5" />,
+            label: "Enrolled Course",
+            href: "/course-enrolled",
           },
         ]
       : [];

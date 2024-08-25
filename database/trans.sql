@@ -73,8 +73,9 @@ COMMIT TRANSACTION
 GO
 
 
-
-
+IF OBJECT_ID('[dbo].[insertUser]', 'P') IS NOT NULL
+    DROP PROCEDURE [dbo].[insertUser];
+GO
 CREATE OR ALTER PROCEDURE [dbo].[insertUser]
 	@email VARCHAR(256),
 	@name NVARCHAR(128),
@@ -130,8 +131,6 @@ BEGIN TRANSACTION
 	WHERE id = @id
 COMMIT TRANSACTION
 GO
-
-
 
 
 CREATE OR ALTER PROCEDURE [dbo].[updateUserAndBankAccount]
@@ -326,7 +325,41 @@ BEGIN TRANSACTION
 COMMIT TRANSACTION
 GO
 
+---------------------
+CREATE OR ALTER PROCEDURE [dbo].[selectAllCourses]
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
 
+	SELECT * FROM [dbo].[course]
+COMMIT TRANSACTION
+GO
+
+CREATE OR ALTER PROCEDURE [dbo].[getCoursesById]
+	@id INT
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	SELECT * FROM [dbo].[course]
+	WHERE id = @id
+COMMIT TRANSACTION
+GO
+
+CREATE OR ALTER PROCEDURE [dbo].[selectCourseByOwner]
+	@ownerId INT
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	SELECT * FROM [dbo].[course]
+	WHERE id IN (SELECT courseId FROM [dbo].[ownedCourse] WHERE ownerId = @ownerId)
+COMMIT TRANSACTION
+GO
+---------------------
 
 
 CREATE OR ALTER PROCEDURE [dbo].[insertCourse]
@@ -353,10 +386,13 @@ BEGIN TRANSACTION
 
 	DECLARE @courseId INT = SCOPE_IDENTITY()
 	INSERT INTO [dbo].[ownedCourse] VALUES (@ownerId, @courseId, 1)
+	INSERT INTO [dbo].[chat](type) VALUES ('C')
+	-- INSERT INTO [dbo].[chat] DEFAULT VALUES
 
-	INSERT INTO [dbo].[chat] DEFAULT VALUES
-	INSERT INTO [dbo].[courseChat] VALUES (SCOPE_IDENTITY(), @courseId)
-	INSERT INTO [dbo].[courseChatMember] VALUES (@ownerId, SCOPE_IDENTITY())
+	DECLARE @chatId INT = SCOPE_IDENTITY()
+
+	INSERT INTO [dbo].[courseChat] VALUES (@chatId, @courseId)
+	INSERT INTO [dbo].[courseChatMember] VALUES (@ownerId, @chatId)
 
 	SELECT *
 	FROM [dbo].[course]
@@ -614,30 +650,38 @@ GO
 
 
 CREATE OR ALTER PROCEDURE [dbo].[insertCourseLesson]
-	@courseId INT,
-	@pos SMALLINT,
-	@title NVARCHAR(64),
-	@description NVARCHAR(512),
-	@isFree BIT,
-	@durationInMinutes TINYINT
+    @courseId INT,
+    @pos SMALLINT,
+    @title NVARCHAR(64),
+    @description NVARCHAR(512),
+    @isFree BIT,
+    @durationInMinutes TINYINT
 AS
-BEGIN TRANSACTION
-	SET XACT_ABORT ON
-	SET NOCOUNT ON
+BEGIN
+    SET XACT_ABORT ON
+    SET NOCOUNT ON
+    BEGIN TRANSACTION
 
-	EXEC [dbo].[insertCourseSection] @courseId, @pos, @title, @description
+    INSERT INTO [dbo].[courseSection]
+	VALUES((SELECT MAX(id) + 1 FROM [dbo].[courseSection]), @courseId, @pos, @title, @description, 'L')
 
-	DECLARE @sectionId SMALLINT = SCOPE_IDENTITY()
+    DECLARE @sectionId SMALLINT
+    SELECT @sectionId = id
+    FROM [dbo].[courseSection]
+    WHERE pos = @pos AND courseId = @courseId AND title = @title AND description = @description
 
-	INSERT INTO [dbo].[courseLesson] VALUES (
-		@sectionId,
-		@courseId,
-		@isFree,
-		@durationInMinutes
-	)
-COMMIT TRANSACTION
+	print @sectionId
+
+    INSERT INTO [dbo].[courseLesson] (id, courseId, isFree, durationInMinutes) VALUES (
+        @sectionId,
+        @courseId,
+        @isFree,
+        @durationInMinutes
+    )
+
+    COMMIT TRANSACTION
+END
 GO
-
 
 
 
@@ -652,12 +696,28 @@ BEGIN TRANSACTION
 	SET XACT_ABORT ON
 	SET NOCOUNT ON
 
+	DECLARE @temp SMALLINT
+
+	SET @temp = (SELECT pos FROM [dbo].[courseSection] WHERE id = @id AND courseId = @courseId)
+
+	IF (SELECT pos FROM [dbo].[courseSection] WHERE pos = @pos AND courseId = @courseId) > 0
+	BEGIN
+		UPDATE [dbo].[courseSection]
+		SET pos = -ABS(pos)
+		WHERE pos = @pos AND courseId = @courseId
+	END
+
 	UPDATE [dbo].[courseSection]
 	SET
 	pos = @pos,
 	title = @title,
 	description = @description
 	WHERE id = @id AND courseId = @courseId
+
+	UPDATE [dbo].[courseSection]
+	SET
+	pos = @temp
+	WHERE pos = -ABS(@pos) AND courseId = @courseId
 COMMIT TRANSACTION
 GO
 
@@ -706,6 +766,19 @@ BEGIN TRANSACTION
 	DROP TABLE #answers
 COMMIT TRANSACTION
 GO
+-----
+CREATE OR ALTER PROCEDURE [dbo].[deleteCourse]
+	@id INT
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	DELETE FROM [dbo].[course]
+	WHERE id = @id
+COMMIT TRANSACTION
+GO
+-------
 
 
 
@@ -865,9 +938,15 @@ BEGIN TRANSACTION
 	SET XACT_ABORT ON
 	SET NOCOUNT ON
 
-	EXEC [dbo].[insertCourseSection] @courseId, @pos, @title, @description
+	INSERT INTO [dbo].[courseSection]
+	VALUES((SELECT MAX(id) + 1 FROM [dbo].[courseSection]), @courseId, @pos, @title, @description, 'E')
 
-	DECLARE @sectionId SMALLINT = SCOPE_IDENTITY()
+    DECLARE @sectionId SMALLINT
+    SELECT @sectionId = id
+    FROM [dbo].[courseSection]
+    WHERE pos = @pos AND courseId = @courseId AND title = @title AND description = @description
+
+	print @sectionId
 
 	INSERT INTO [dbo].[courseExercise] VALUES (
 		@sectionId,
@@ -997,8 +1076,8 @@ CREATE OR ALTER PROCEDURE [dbo].[updateCourse]
 	@thumbnail NVARCHAR(256),
 	@advertisementVideo NVARCHAR(256),
 	@updatedAt DATETIME,
-	@categoryIds NVARCHAR(MAX),
-	@ownerSharePercentages NVARCHAR(MAX)
+	@categoryIds NVARCHAR(MAX)
+	-- @ownerSharePercentages NVARCHAR(MAX)
 AS
 BEGIN TRANSACTION
 	SET XACT_ABORT ON
@@ -1018,7 +1097,7 @@ BEGIN TRANSACTION
 
 	EXEC [dbo].[updateCourseCategories] @id, @categoryIds
 
-	EXEC [dbo].[updateOwnerSharePercentages] @id, @ownerSharePercentages
+	-- EXEC [dbo].[updateOwnerSharePercentages] @id, @ownerSharePercentages
 
 	SELECT *
 	FROM [dbo].[course]
@@ -1044,6 +1123,28 @@ COMMIT TRANSACTION
 GO
 
 
+-----
+CREATE OR ALTER PROCEDURE [dbo].[selectRegion]
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	SELECT * FROM [dbo].[region]
+COMMIT TRANSACTION
+GO
+
+CREATE OR ALTER PROCEDURE [dbo].[searchRegionById]
+	@id INT
+AS
+BEGIN TRANSACTION
+	SET XACT_ABORT ON
+	SET NOCOUNT ON
+
+	SELECT name FROM [dbo].[region]
+	WHERE id = @id
+COMMIT TRANSACTION
+GO
 
 
 CREATE OR ALTER PROCEDURE [dbo].[searchRegions]
@@ -1103,9 +1204,9 @@ BEGIN TRANSACTION
     FROM OPENJSON(@categoryIds)
     WITH (value INT '$')
 
-	SELECT *, (CASE 
+	SELECT *, (CASE
             WHEN c.visitorCount = 0 THEN 0
-            ELSE c.learnerCount / c.visitorCount 
+            ELSE c.learnerCount / c.visitorCount
         END) AS conversionRate FROM [dbo].[course] c
 	WHERE title LIKE @title + '%' AND (@status IS NULL OR status = @status)
 	AND (@lecturerId IS NULL OR EXISTS(
@@ -1122,7 +1223,7 @@ BEGIN TRANSACTION
 		SELECT categoryId FROM [dbo].[courseCategory] cc
 		WHERE cc.courseId = c.id
 	)
-	ORDER BY 
+	ORDER BY
         (CASE WHEN @orderBy = 'L' THEN learnerCount END) DESC,
         (CASE WHEN @orderBy = 'C' THEN createdAt END) DESC,
         (CASE WHEN @orderBy = 'R' THEN rating END) DESC,
@@ -1134,6 +1235,7 @@ BEGIN TRANSACTION
 	DROP TABLE #categoryIds
 COMMIT TRANSACTION
 GO
+
 
 
 CREATE OR ALTER PROCEDURE [dbo].[searchCategoriesByStats]
@@ -1258,7 +1360,6 @@ BEGIN TRANSACTION
 	SELECT @learnerId, ownerId, @courseId, @paidAmount, 0.1, 10, sharePercentage, @discountPercentage, @date
 	FROM [dbo].[ownedCourse]
 	WHERE courseId = @courseId
-
 
 	UPDATE [dbo].[bankAccount]
 	SET inAppBalance = inAppBalance - @paidAmount
