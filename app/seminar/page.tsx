@@ -19,7 +19,7 @@ export default function Page() {
               setIntervalId(
                 window.setInterval(() => {
                   const title = ["the", "of", "and", "a", "an", "is", "how"];
-                  const id = Math.floor(Math.random() * 3 + 4);
+                  const id = Math.floor(Math.random() * 3 + 140041);
                   console.log(id);
                   updateCourseSubtitle({
                     subtitle: Math.random().toString(),
