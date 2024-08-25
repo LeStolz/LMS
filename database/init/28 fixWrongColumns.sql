@@ -83,4 +83,3 @@ DROP COLUMN [monthlyRevenueGenerated];
 
 ALTER TABLE [dbo].[category] ADD monthlyRevenueGenerated AS [dbo].[getCategoryMonthlyRevenueGenerated](id)
 GO
-

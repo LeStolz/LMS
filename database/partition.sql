@@ -869,7 +869,6 @@ ADD FILEGROUP courseAnnouncement_others;
 GO
 
 --Second, map the filegroups with the physical files.
-
 ALTER DATABASE lms
 ADD FILE (
     NAME = courseAnnouncement_2021,
@@ -906,25 +905,15 @@ ADD FILE (
     FILEGROWTH = 1024 KB
 ) TO FILEGROUP courseAnnouncement_2024
 
-ALTER DATABASE lms
-ADD FILE (
-    NAME = courseAnnouncement_others,
-    FILENAME = 'E:\data\courseAnnouncement\courseAnnouncement_others.ndf',
-    SIZE = 10 MB,
-    MAXSIZE = UNLIMITED,
-    FILEGROWTH = 1024 KB
-) TO FILEGROUP courseAnnouncement_others
-
-
 GO
 CREATE PARTITION FUNCTION pf_createdAtRange_courseAnnouncement(date)
-AS RANGE LEFT FOR VALUES (
-    '2021-01-01', '2022-01-01', '2023-01-01', '2024-01-01'
+AS RANGE RIGHT FOR VALUES (
+    '2022-01-01', '2023-01-01', '2024-01-01'
 );
 
 CREATE PARTITION SCHEME ps_createdAt_courseAnnouncement
 AS PARTITION pf_createdAtRange_courseAnnouncement
-TO ([courseAnnouncement_2021], [courseAnnouncement_2022], [courseAnnouncement_2023], [courseAnnouncement_2024], [courseAnnouncement_others]);
+TO ([courseAnnouncement_2021], [courseAnnouncement_2022], [courseAnnouncement_2023], [courseAnnouncement_2024]);
 
 GO
 
