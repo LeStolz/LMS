@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   searchCourseByOwner,
   searchCourseTitle,
+  searchEnrollCourse,
   searchVerifyCourse,
 } from "@/app/api/course/course";
 import { useSearchParams } from "next/navigation";
@@ -17,8 +18,7 @@ export default function SearchData({ user }: { user: any }) {
   const searchParams = useSearchParams();
   const title = searchParams.get("title");
   const [data, setData] = useState<any>([]);
-
-  
+  const [attendedCourses, setAttendedCourses] = useState<any>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -29,15 +29,31 @@ export default function SearchData({ user }: { user: any }) {
       } catch {
         redirect("/");
       }
+
+      try {
+        const fecth = await searchEnrollCourse({
+          learningStatus: "F",
+        });
+        setAttendedCourses(fecth);
+      } catch {
+        redirect("/");
+      }
     };
 
     fetchData();
   }, [title]);
 
+  const attendedCourseIds = new Set(
+    attendedCourses?.map((course: any) => course.id) || []
+  );
+  const notAttendedCourses = data.filter(
+    (course: any) => !attendedCourseIds.has(course.id)
+  );
+
   return (
     <>
       <div className="p-6">
-        <CourseList items={data} user={user} />
+        <CourseList items={notAttendedCourses} user={user} />
       </div>
     </>
   );

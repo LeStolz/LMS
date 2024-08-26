@@ -13,11 +13,13 @@ export default function Component({
   user: any;
   getRevenue: any;
 }) {
-  const [year, setYear] = useState<any>();
-  const [month, setMonth] = useState<any>();
-  const [revenue, setRevenue] = useState<Number>(0);
+  const [year, setYear] = useState<number | undefined>();
+  const [month, setMonth] = useState<number | undefined>();
+  const [revenue, setRevenue] = useState<number>(0);
+  const [error, setError] = useState<string | null>(null);
+
   const mutate = useMutation({
-    mutationFn: getRevenue,
+    mutationFn: (variables: { year: number; month: number }) => getRevenue(variables),
     onMutate: () => {
       return { year, month };
     },
@@ -27,27 +29,32 @@ export default function Component({
     },
   });
 
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (year && year > 1 && month && month >= 1 && month <= 12) {
+      setError(null);
+      mutate.mutate({ year, month });
+    } else {
+      setError("Please enter a valid year and month.");
+    }
+  };
+
   return (
     <>
-      <form
-        onSubmit={() => {
-          mutate.mutate(year, month);
-        }}
-        className="space-y-4"
-      >
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label
             htmlFor="year"
             className="block text-sm font-medium text-gray-700"
           >
-            year
+            Year
           </label>
           <Input
             type="number"
             id="year"
             name="year"
             value={year}
-            onChange={(e) => setYear(e.target.value)}
+            onChange={(e) => setYear(parseInt(e.target.value))}
             required
           />
         </div>
@@ -63,10 +70,11 @@ export default function Component({
             id="month"
             name="month"
             value={month}
-            onChange={(e) => setMonth(e.target.value)}
+            onChange={(e) => setMonth(parseInt(e.target.value))}
             required
           />
         </div>
+        {error && <p className="text-red-500">{error}</p>}
         <button
           type="submit"
           className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
