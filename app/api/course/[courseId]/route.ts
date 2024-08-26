@@ -69,7 +69,7 @@ export async function getCourse<B extends boolean>({
       course.reviews = [];
     } else {
       course.reviews = JSON.parse(course.reviews).filter((review: Object) =>
-        review.hasOwnProperty("id")
+        review.hasOwnProperty("learnerId")
       );
     }
 
@@ -81,9 +81,7 @@ export async function getCourse<B extends boolean>({
     //   );
     // }
 
-    return course as B extends true
-      ? Course & CourseCategories & CourseSection
-      : Course;
+    return course as any;
   } catch (error) {
     throw error;
   }
@@ -607,7 +605,7 @@ export async function reviewCourse({
   }
 }
 
-export async function demandCourseVerification({id}: {id: number}) {
+export async function demandCourseVerification({ id }: { id: number }) {
   const user = await authorize(["LT"]);
 
   if (!user) {
@@ -616,9 +614,7 @@ export async function demandCourseVerification({id}: {id: number}) {
 
   try {
     const course = (
-      await (await db())
-        .input("id", id)
-        .execute("demandCourseVerification")
+      await (await db()).input("id", id).execute("demandCourseVerification")
     ).recordset?.[0];
 
     return course;
@@ -626,4 +622,3 @@ export async function demandCourseVerification({id}: {id: number}) {
     throw error;
   }
 }
-
