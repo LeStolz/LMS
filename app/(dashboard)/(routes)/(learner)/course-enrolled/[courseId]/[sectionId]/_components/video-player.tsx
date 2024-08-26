@@ -8,7 +8,7 @@ interface VideoPlayerProps {
   playbackId: string;
   courseId: string;
   setionId: string;
-//   nextSectionId: string;
+  //   nextSectionId: string;
   isLocked: boolean;
   title: string;
 }
@@ -17,11 +17,11 @@ export const VideoPlayer = ({
   playbackId,
   courseId,
   setionId,
-//   nextSectionId,
+  //   nextSectionId,
   isLocked,
   title,
 }: VideoPlayerProps) => {
-    const [isReady, setIsReady] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   return (
     <div className="relative aspect-video">
       {!isLocked && (
@@ -30,7 +30,7 @@ export const VideoPlayer = ({
         </div>
       )}
       {isLocked && (
-        <div className="absolute inset-0 bg-slate-800 flex items-center justify-center bg-slate-800 flex-col gap-y-2 text-secondary">
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-800 flex-col gap-y-2 text-secondary">
           <Lock size={50} className="h-8 w-8" />
           <span className="text-center">
             This video is locked. Please complete the previous section to unlock
@@ -38,20 +38,16 @@ export const VideoPlayer = ({
           </span>
         </div>
       )}
-      {
-        !isLocked && (
-            <MuxPlayer
-            title={title}
-            playbackId={playbackId}
-            className={cn(
-                !isReady && "hidden",
-            )}
-            onCanPlay={() => setIsReady(true)}
-            onEnded={() => {}}
-            autoPlay
-            />
-        )
-      }
+      {!isLocked && (
+        <MuxPlayer
+          title={title}
+          playbackId={playbackId}
+          className={cn(!isReady && "hidden")}
+          onCanPlay={() => setIsReady(true)}
+          onEnded={() => {}}
+          autoPlay
+        />
+      )}
     </div>
   );
 };
