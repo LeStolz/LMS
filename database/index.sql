@@ -1,9 +1,9 @@
 --1
-CREATE NONCLUSTERED INDEX IX_User_email_password
-ON [dbo].[user] (email, password)
-INCLUDE (id);
+CREATE NONCLUSTERED INDEX IX_User_email
+ON [dbo].[user] (email)
+INCLUDE (id, password);
 
-DROP INDEX IX_User_email_password ON [dbo].[user];
+DROP INDEX IX_User_email ON [dbo].[user];
 
 --2 -- searchCOURSE
 CREATE UNIQUE NONCLUSTERED INDEX UIX_Course_title
