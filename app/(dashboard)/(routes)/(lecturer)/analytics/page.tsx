@@ -9,12 +9,12 @@ export default async function Component() {
     return redirect("/");
   }
   
-  const getRevenue = async ({year, month} : {year: number, month: number}) => {
+  const getRevenue = async ({userId, year, month} : {userId:number, year: number, month: number}) => {
     "use server";
     const earnings = await selectLecturerEarningPerMonth({
-      id: user.id,
-      date: new Date(`${year}-${month}-01`),
-      courseId: null,
+      id: userId,
+      year: year,
+      month: month
     });
     return earnings;
   }

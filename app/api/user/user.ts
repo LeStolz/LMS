@@ -221,20 +221,21 @@ export async function verifyLecturer({
 
 export async function selectLecturerEarningPerMonth({
   id,
-  date,
-  courseId 
+  year,
+  month 
 }: {
   id: number;
-  date: Date;
-  courseId: number | null;
+  year: number,
+  month: number 
 }) {
   try {
     const result = await (await db())
       .input("id", id)
-      .input("date", date)
-      .input("courseId", courseId)
-      .execute("selectLecturerEarningPerMonth");
-    return result.recordset;
+      .input("date", new Date(`${year}-${month}-01`))
+      .input("courseId", null)
+      .execute("selectLecturerEarningPerMonthFixed");
+    
+    return result.recordset[0].count??0;
   } catch (error) {
     throw error;
   }

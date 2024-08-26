@@ -27,7 +27,7 @@ interface CourseDetailsProps {
   };
 }
 
-const CourseDetail = async ({ params }: { params: { courseId: string} }) => {
+const CourseDetail = async ({ params }: { params: { courseId: string, f: string } }) => {
   let course;
   try {
     course = await getCourse({
@@ -35,9 +35,10 @@ const CourseDetail = async ({ params }: { params: { courseId: string} }) => {
       withCategories: true,
       withSections: true,
       withReviews: true,
-      fixed: false,
+      fixed: true,
     });
-  } catch {
+  } catch(e: any) {
+    console.log(e);
     return redirect("/");
   }
 

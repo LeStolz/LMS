@@ -19,7 +19,7 @@ export default function Component({
   const [error, setError] = useState<string | null>(null);
 
   const mutate = useMutation({
-    mutationFn: (variables: { year: number; month: number }) => getRevenue(variables),
+    mutationFn: (variables: { userId: number, year: number; month: number }) => getRevenue(variables),
     onMutate: () => {
       return { year, month };
     },
@@ -33,7 +33,7 @@ export default function Component({
     event.preventDefault();
     if (year && year > 1 && month && month >= 1 && month <= 12) {
       setError(null);
-      mutate.mutate({ year, month });
+      mutate.mutate({userId:user.id, year, month });
     } else {
       setError("Please enter a valid year and month.");
     }

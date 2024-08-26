@@ -22,11 +22,13 @@ export async function getCourse<B extends boolean>({
   withCategories,
   withSections,
   withReviews,
+  fixed
 }: {
   id: number;
   withCategories: B;
   withSections: B;
   withReviews: B;
+  fixed: boolean;
 }): Promise<any> {
   const user = await authorize(["LN", "LT", "AD"]);
 
@@ -46,7 +48,7 @@ export async function getCourse<B extends boolean>({
         .input("withDescriptionDetails", false)
         .input("withReviews", withReviews)
         .input("learnerId", false)
-        .execute("selectCourse")
+        .execute("selectCourse" + (fixed ? "Fixed" : ""))
     ).recordset?.[0];
 
     if (course.categories === null) {
@@ -69,7 +71,7 @@ export async function getCourse<B extends boolean>({
       course.reviews = [];
     } else {
       course.reviews = JSON.parse(course.reviews).filter((review: Object) =>
-        review.hasOwnProperty("id")
+        review.hasOwnProperty("learnerId")
       );
     }
 
@@ -81,9 +83,7 @@ export async function getCourse<B extends boolean>({
     //   );
     // }
 
-    return course as B extends true
-      ? Course & CourseCategories & CourseSection
-      : Course;
+    return course as any;
   } catch (error) {
     throw error;
   }
