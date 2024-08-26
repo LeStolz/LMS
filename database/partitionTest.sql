@@ -8,9 +8,9 @@ BEGIN TRANSACTION
 	SET XACT_ABORT ON
 	SET NOCOUNT ON
 
-	SELECT SUM(revenue) FROM [dbo].[transactionFixed]
+	SELECT SUM(revenue) AS count FROM [dbo].[transactionFixed]
 	WHERE
-		receiverId = @id AND (courseId IS NULL OR courseId = @courseId) AND
+		receiverId = @id AND
 		DATEFROMPARTS(YEAR(@date), MONTH(@date), 1) = DATEFROMPARTS(YEAR(createdAt), MONTH(createdAt), 1)
 COMMIT TRANSACTION
 GO
@@ -28,7 +28,7 @@ GO
 DECLARE @StartTime DATETIME2, @EndTime DATETIME2;
 SET @StartTime = SYSDATETIME();
 
-EXEC selectLecturerEarningPerMonthFixed 66894, '2021-11-01', 56122;
+EXEC selectLecturerEarningPerMonthFixed 66894, '2021-11-01', null;
 
 SET @EndTime = SYSDATETIME();
 SELECT DATEDIFF(MILLISECOND, @StartTime, @EndTime) AS ExecTimeInMsBeforeDcp;

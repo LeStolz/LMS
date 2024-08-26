@@ -22,11 +22,13 @@ export async function getCourse<B extends boolean>({
   withCategories,
   withSections,
   withReviews,
+  fixed
 }: {
   id: number;
   withCategories: B;
   withSections: B;
   withReviews: B;
+  fixed: boolean;
 }): Promise<any> {
   const user = await authorize(["LN", "LT", "AD"]);
 
@@ -46,7 +48,7 @@ export async function getCourse<B extends boolean>({
         .input("withDescriptionDetails", false)
         .input("withReviews", withReviews)
         .input("learnerId", false)
-        .execute("selectCourse")
+        .execute("selectCourse" + (fixed ? "Fixed" : ""))
     ).recordset?.[0];
 
     if (course.categories === null) {

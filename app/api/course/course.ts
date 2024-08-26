@@ -182,6 +182,46 @@ export async function searchVerifyCourse(): Promise<
   }
 }
 
+export async function searchCourseTitle({title}: {title:string}): Promise<
+  (Course & CourseCategories & CourseSection)[]
+> {
+  const user = await authorize(["LN"]);
+
+  if (!user) {
+    throw new Error("Unauthorized.");
+  }
+
+  try {
+    let courses = (
+      await (await db())
+        .input("title", title)    
+        .input("status", "V")
+        .input("offset", 0)
+        .input("categoryIds", "[]")
+        .input("lecturerId", null)
+        .input("learnerId", null)
+        .input("learningStatus", null)
+        .input("orderBy", "C")
+        .execute("searchCourses")
+    ).recordset as any[];
+
+    const detailedCourses = await Promise.all(
+      courses.map(async (course) => {
+        return await getCourse({
+          id: course.id,
+          withCategories: true,
+          withSections: true,
+          withReviews: true,
+        });
+      })
+    );
+
+    return detailedCourses;
+  } catch (error) {
+    throw error;
+  }
+}
+
 export async function searchEnrollCourse({
   learningStatus,
 }: {

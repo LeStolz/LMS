@@ -7,7 +7,7 @@ import { SearchInput } from "./search-input";
 
 export const SearchBar = () => {
   const pathName = usePathname();
-  const isSearchPage = pathName === "/browse";
+  const isSearchPage = pathName === "/browse" || pathName === "/course-all";
   return (
     <>
       {isSearchPage && (
