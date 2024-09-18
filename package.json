@@ -34,7 +34,7 @@
     "jose": "^5.4.0",
     "lucide-react": "^0.379.0",
     "mssql": "^11.0.0",
-    "next": "14.2.3",
+    "next": "14.2.12",
     "next-themes": "^0.3.0",
     "query-string": "^9.1.0",
     "react": "^18",
